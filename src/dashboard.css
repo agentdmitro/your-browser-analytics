@@ -711,6 +711,37 @@ body {
 	color: var(--text-secondary);
 }
 
+/* Sessions */
+.chart-body-sessions {
+	min-height: auto;
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 10px;
+}
+
+.session-stat {
+	padding: 10px 12px;
+	border: 1px solid var(--border-color);
+	border-radius: var(--radius-sm);
+	background: var(--bg-secondary);
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.session-label {
+	font-size: 11px;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+}
+
+.session-value {
+	font-size: 16px;
+	font-weight: 600;
+	color: var(--text-primary);
+}
+
 /* Custom Categories */
 .chart-body-custom {
 	min-height: auto;

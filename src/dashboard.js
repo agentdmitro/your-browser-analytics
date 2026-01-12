@@ -243,7 +243,7 @@ async function init() {
 		uniqueDomains: document.getElementById('unique-domains'),
 		peakHour: document.getElementById('peak-hour'),
 		peakDay: document.getElementById('peak-day'),
-		activeTime: document.getElementById('active-time'),
+		averageStreak: document.getElementById('average-streak'),
 		customSelect: document.getElementById('date-range-select'),
 		selectTrigger: document.getElementById('select-trigger'),
 		selectValue: document.getElementById('select-value'),
@@ -261,6 +261,9 @@ async function init() {
 		categoryLegend: document.getElementById('category-legend'),
 		searchSummary: document.getElementById('search-summary'),
 		searchList: document.getElementById('search-list'),
+		sessionsCount: document.getElementById('sessions-count'),
+		sessionsAvg: document.getElementById('sessions-avg'),
+		sessionsLongest: document.getElementById('sessions-longest'),
 		customPattern: document.getElementById('custom-pattern'),
 		customCategory: document.getElementById('custom-category'),
 		btnAddRule: document.getElementById('btn-add-rule'),
@@ -557,6 +560,7 @@ async function loadAnalytics() {
 		renderPagesTable();
 		renderCategoryLegend();
 		renderSearchStats();
+		renderSessionsStats();
 	} catch (error) {
 		console.error('Failed to load analytics:', error);
 		showError();
@@ -570,7 +574,10 @@ function showError() {
 	if (elements.uniqueDomains) elements.uniqueDomains.textContent = '--';
 	if (elements.peakHour) elements.peakHour.textContent = '--';
 	if (elements.peakDay) elements.peakDay.textContent = '--';
-	if (elements.activeTime) elements.activeTime.textContent = '--';
+	if (elements.averageStreak) elements.averageStreak.textContent = '--';
+	if (elements.sessionsCount) elements.sessionsCount.textContent = '--';
+	if (elements.sessionsAvg) elements.sessionsAvg.textContent = '--';
+	if (elements.sessionsLongest) elements.sessionsLongest.textContent = '--';
 }
 
 function updateStats() {
@@ -601,9 +608,9 @@ function updateStats() {
 		}
 	}
 
-	if (elements.activeTime) {
-		const activeMs = analyticsData.activeTimeToday || 0;
-		elements.activeTime.textContent = formatDuration(activeMs);
+	if (elements.averageStreak) {
+		const streakMs = analyticsData.avgStreakMs || 0;
+		elements.averageStreak.textContent = formatDuration(streakMs);
 	}
 }
 
@@ -891,6 +898,22 @@ function renderSearchStats() {
 			`
 		)
 		.join('');
+}
+
+function renderSessionsStats() {
+	if (!elements.sessionsCount || !elements.sessionsAvg || !elements.sessionsLongest) return;
+
+	const sessions = analyticsData?.sessions;
+	if (!sessions) {
+		elements.sessionsCount.textContent = '--';
+		elements.sessionsAvg.textContent = '--';
+		elements.sessionsLongest.textContent = '--';
+		return;
+	}
+
+	elements.sessionsCount.textContent = formatNumber(sessions.count || 0);
+	elements.sessionsAvg.textContent = formatDuration(sessions.avgDuration || 0);
+	elements.sessionsLongest.textContent = formatDuration(sessions.longestDuration || 0);
 }
 
 function renderPagesTable(searchQuery = '') {

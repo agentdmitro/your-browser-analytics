@@ -5,6 +5,8 @@
 
 // Cache duration in milliseconds (5 minutes)
 const CACHE_DURATION = 5 * 60 * 1000;
+const SESSION_GAP_MS = 30 * 60 * 1000;
+const ACTIVE_VISIT_GAP_MS = 10 * 60 * 1000;
 
 // Cached data store
 let cachedData = null;
@@ -2315,6 +2317,84 @@ function extractSearchQuery(url) {
 	}
 }
 
+function calculateSessions(visitTimes) {
+	if (!visitTimes || visitTimes.length === 0) {
+		return { count: 0, totalDuration: 0, avgDuration: 0, longestDuration: 0 };
+	}
+
+	const times = [...visitTimes].sort((a, b) => a - b);
+	let sessionCount = 1;
+	let sessionStart = times[0];
+	let sessionEnd = times[0];
+	let totalDuration = 0;
+	let longestDuration = 0;
+
+	for (let i = 1; i < times.length; i++) {
+		const time = times[i];
+		if (time - sessionEnd > SESSION_GAP_MS) {
+			const duration = sessionEnd - sessionStart;
+			totalDuration += duration;
+			if (duration > longestDuration) longestDuration = duration;
+			sessionCount++;
+			sessionStart = time;
+		}
+		sessionEnd = time;
+	}
+
+	const finalDuration = sessionEnd - sessionStart;
+	totalDuration += finalDuration;
+	if (finalDuration > longestDuration) longestDuration = finalDuration;
+
+	const avgDuration = sessionCount > 0 ? Math.round(totalDuration / sessionCount) : 0;
+
+	return {
+		count: sessionCount,
+		totalDuration,
+		avgDuration,
+		longestDuration,
+	};
+}
+
+function calculateActiveTimeFromVisits(visitTimes, gapMs) {
+	if (!visitTimes || visitTimes.length < 2) return 0;
+
+	const times = [...visitTimes].sort((a, b) => a - b);
+	let total = 0;
+
+	for (let i = 1; i < times.length; i++) {
+		const delta = times[i] - times[i - 1];
+		if (delta > 0 && delta <= gapMs) {
+			total += delta;
+		}
+	}
+
+	return total;
+}
+
+function calculateAverageStreak(visitTimes, gapMs) {
+	if (!visitTimes || visitTimes.length < 2) return 0;
+
+	const times = [...visitTimes].sort((a, b) => a - b);
+	let streakStart = times[0];
+	let streakEnd = times[0];
+	let streakCount = 1;
+	let totalDuration = 0;
+
+	for (let i = 1; i < times.length; i++) {
+		const delta = times[i] - streakEnd;
+		if (delta > gapMs) {
+			totalDuration += Math.max(0, streakEnd - streakStart);
+			streakStart = times[i];
+			streakCount += 1;
+		}
+		streakEnd = times[i];
+	}
+
+	totalDuration += Math.max(0, streakEnd - streakStart);
+
+	return streakCount > 0 ? Math.round(totalDuration / streakCount) : 0;
+}
+
 function ruleMatches(rule, domain, url) {
 	if (!rule || !rule.pattern || !rule.category) return false;
 	const pattern = String(rule.pattern).trim();
@@ -2365,6 +2445,7 @@ function loadPersistentState() {
  */
 async function fetchHistoryData(days = 30, startTimestamp = null, endTimestamp = null) {
 	const now = Date.now();
+	const todayKey = getDateKey();
 
 	// Calculate time range
 	let startTime, endTime;
@@ -2394,6 +2475,8 @@ async function fetchHistoryData(days = 30, startTimestamp = null, endTimestamp =
 		const hourlyActivity = new Array(24).fill(0);
 		const dailyActivity = new Array(7).fill(0);
 		const searchStats = { total: 0, engines: {}, queries: {} };
+		const visitTimes = [];
+		const visitTimesToday = [];
 		// Initialize ALL categories from CATEGORY_RULES + 'other'
 		const categoryStats = {};
 		for (const category of Object.keys(CATEGORY_RULES)) {
@@ -2454,15 +2537,21 @@ async function fetchHistoryData(days = 30, startTimestamp = null, endTimestamp =
 			// Process each individual visit for time-based stats
 			for (const visit of visits) {
 				const visitDate = new Date(visit.visitTime);
+				visitTimes.push(visit.visitTime);
 				hourlyActivity[visitDate.getHours()]++;
 				dailyActivity[visitDate.getDay()]++;
 
 				// Today's visits
 				if (visit.visitTime >= todayStart) {
 					todayVisits++;
+					visitTimesToday.push(visit.visitTime);
 				}
 			}
 		}
+
+		const sessions = calculateSessions(visitTimes);
+		const activeTimeTodayFromVisits = calculateActiveTimeFromVisits(visitTimesToday, ACTIVE_VISIT_GAP_MS);
+		const avgStreakMs = calculateAverageStreak(visitTimes, ACTIVE_VISIT_GAP_MS);
 
 		// Sort and limit results
 		const topDomains = Object.entries(domainStats)
@@ -2490,12 +2579,28 @@ async function fetchHistoryData(days = 30, startTimestamp = null, endTimestamp =
 				engines: searchStats.engines,
 				topSearches,
 			},
+			sessions,
 			todayVisits,
 			totalVisits,
 			totalItems: historyItems.length,
 			uniqueDomains: Object.keys(domainStats).length, // Add actual unique domains count
-			activeTimeTotal,
-			activeTimeToday,
+			activeTimeTotal: (() => {
+				let total = activeTimeTotal;
+				if (activeSessionStart && canTrackActiveTime()) {
+					const elapsed = now - activeSessionStart;
+					if (elapsed > 0) total += elapsed;
+				}
+				return total;
+			})(),
+			activeTimeToday: (() => {
+				let today = activeTimeDate === todayKey ? activeTimeToday : 0;
+				if (activeSessionStart && canTrackActiveTime()) {
+					const elapsed = now - activeSessionStart;
+					if (elapsed > 0) today += elapsed;
+				}
+				return Math.max(today, activeTimeTodayFromVisits);
+			})(),
+			avgStreakMs,
 			fetchedAt: now,
 			dateRange: {
 				start: startTime,
