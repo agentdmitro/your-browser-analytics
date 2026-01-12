@@ -36,10 +36,10 @@ async function getTodayStats() {
 // DOM Elements
 const elements = {
 	todayVisits: document.getElementById('today-visits'),
+	uniqueDomains: document.getElementById('unique-domains'),
 	topSites: document.getElementById('top-sites'),
 	sparkline: document.querySelector('.sparkline-path'),
 	btnDashboard: document.getElementById('btn-dashboard'),
-	btnRefresh: document.getElementById('btn-refresh'),
 };
 
 async function init() {
@@ -51,18 +51,6 @@ function setupEventListeners() {
 	elements.btnDashboard?.addEventListener('click', () => {
 		chrome.tabs.create({ url: chrome.runtime.getURL('src/dashboard.html') });
 		window.close();
-	});
-
-	elements.btnRefresh?.addEventListener('click', async () => {
-		if (elements.btnRefresh) {
-			elements.btnRefresh.disabled = true;
-			elements.btnRefresh.textContent = '⏳ Loading...';
-		}
-		await loadStats();
-		if (elements.btnRefresh) {
-			elements.btnRefresh.disabled = false;
-			elements.btnRefresh.innerHTML = '<span class="icon">🔄</span> Refresh';
-		}
 	});
 }
 
@@ -78,6 +66,10 @@ async function loadStats() {
 		// Use todayVisits which now comes from actual visit counting
 		if (elements.todayVisits) {
 			elements.todayVisits.textContent = formatNumber(stats.todayVisits || 0);
+		}
+
+		if (elements.uniqueDomains) {
+			elements.uniqueDomains.textContent = formatNumber(stats.uniqueDomains || 0);
 		}
 
 		if (elements.sparkline && stats.hourlyActivity?.length > 0) {
@@ -153,6 +145,7 @@ function getFaviconEmoji(domain) {
 
 function showError() {
 	if (elements.todayVisits) elements.todayVisits.textContent = '--';
+	if (elements.uniqueDomains) elements.uniqueDomains.textContent = '--';
 	if (elements.topSites) {
 		elements.topSites.innerHTML = `
 			<li class="empty-state">

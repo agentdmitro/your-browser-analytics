@@ -11,6 +11,8 @@ const PAGE_SIZE = 10;
 let customStartDate = null;
 let customEndDate = null;
 let selectedDays = 30;
+let historyStartDate = null;
+let historyDaysAvailable = 0;
 
 // DOM Elements - will be initialized after DOM loads
 let elements = {};
@@ -33,15 +35,43 @@ function getDayName(index) {
 
 function getCategoryColor(category) {
 	const colors = {
+		development: '#22c55e',
 		work: '#6366f1',
 		social: '#ec4899',
 		entertainment: '#f59e0b',
+		video: '#ff6b6b',
+		gaming: '#9333ea',
+		music: '#a855f7',
 		shopping: '#10b981',
 		news: '#3b82f6',
 		search: '#8b5cf6',
 		finance: '#14b8a6',
 		education: '#f97316',
 		ai: '#06b6d4',
+		travel: '#0ea5e9',
+		food: '#ef4444',
+		health: '#84cc16',
+		cloud: '#7c3aed',
+		reference: '#64748b',
+		communication: '#f472b6',
+		productivity: '#fbbf24',
+		government: '#dc2626',
+		utilities: '#78716c',
+		design: '#e879f9',
+		russia: '#1e3a5f',
+		podcast: '#8b5cf6',
+		realestate: '#0d9488',
+		jobs: '#ea580c',
+		dating: '#f43f5e',
+		sports: '#16a34a',
+		weather: '#0284c7',
+		automotive: '#525252',
+		legal: '#7c2d12',
+		hosting: '#4f46e5',
+		forums: '#be123c',
+		streaming: '#c026d3',
+		modeling3d: '#0891b2',
+		security: '#15803d',
 		other: '#6b7280',
 	};
 	return colors[category] || colors.other;
@@ -49,15 +79,43 @@ function getCategoryColor(category) {
 
 function getCategoryIcon(category) {
 	const icons = {
+		development: '🖥️',
 		work: '💼',
 		social: '💬',
 		entertainment: '🎬',
+		video: '📺',
+		gaming: '🎮',
+		music: '🎵',
 		shopping: '🛒',
 		news: '📰',
 		search: '🔍',
 		finance: '💰',
 		education: '📚',
 		ai: '🤖',
+		travel: '✈️',
+		food: '🍔',
+		health: '🏥',
+		cloud: '☁️',
+		reference: '📖',
+		communication: '📞',
+		productivity: '📋',
+		government: '🏛️',
+		utilities: '🔧',
+		design: '🎨',
+		russia: '🤡',
+		podcast: '🎙️',
+		realestate: '🏠',
+		jobs: '💼',
+		dating: '💕',
+		sports: '⚽',
+		weather: '🌤️',
+		automotive: '🚗',
+		legal: '⚖️',
+		hosting: '🌐',
+		forums: '💭',
+		streaming: '📡',
+		modeling3d: '🧊',
+		security: '🔒',
 		other: '🌐',
 	};
 	return icons[category] || icons.other;
@@ -108,6 +166,18 @@ async function getAnalytics(days = 30, startTimestamp = null, endTimestamp = nul
 	});
 }
 
+async function getHistoryStartDate() {
+	return new Promise((resolve, reject) => {
+		chrome.runtime.sendMessage({ type: 'GET_HISTORY_START_DATE' }, (response) => {
+			if (chrome.runtime.lastError) {
+				reject(chrome.runtime.lastError);
+				return;
+			}
+			resolve(response);
+		});
+	});
+}
+
 function downloadAsJson(data, filename = 'browsing-analytics.json') {
 	const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
 	const url = URL.createObjectURL(blob);
@@ -143,9 +213,40 @@ async function init() {
 		categoryLegend: document.getElementById('category-legend'),
 	};
 
+	// Get history start date and filter options
+	try {
+		const historyInfo = await getHistoryStartDate();
+		historyStartDate = historyInfo.startDate;
+		historyDaysAvailable = historyInfo.daysAvailable;
+		filterTimeRangeOptions();
+	} catch (e) {
+		console.error('Failed to get history start date:', e);
+	}
+
 	setupCustomSelect();
 	setupEventListeners();
 	await loadAnalytics();
+}
+
+function filterTimeRangeOptions() {
+	if (!elements.selectOptions || historyDaysAvailable === 0) return;
+
+	const options = elements.selectOptions.querySelectorAll('.custom-select-option');
+	options.forEach((option) => {
+		const value = option.dataset.value;
+		if (value === 'custom' || value === 'all' || value === '1') return;
+
+		const days = parseInt(value, 10);
+		if (!isNaN(days) && days > historyDaysAvailable) {
+			option.style.display = 'none';
+		}
+	});
+}
+
+function formatHistoryStartDate() {
+	if (!historyStartDate) return '';
+	const date = new Date(historyStartDate);
+	return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function setupCustomSelect() {
@@ -173,12 +274,20 @@ function setupCustomSelect() {
 		if (value === 'custom') {
 			elements.dateRangePicker?.classList.add('visible');
 			if (elements.selectValue) elements.selectValue.textContent = 'Custom Range';
+		} else if (value === 'all') {
+			elements.dateRangePicker?.classList.remove('visible');
+			const sinceText = `Since ${formatHistoryStartDate()}`;
+			if (elements.selectValue) elements.selectValue.textContent = sinceText;
+			customStartDate = historyStartDate;
+			customEndDate = Date.now();
+			selectedDays = historyDaysAvailable;
+			loadAnalytics();
 		} else {
 			elements.dateRangePicker?.classList.remove('visible');
 			if (elements.selectValue) elements.selectValue.textContent = text;
 			customStartDate = null;
 			customEndDate = null;
-			selectedDays = parseInt(value);
+			selectedDays = parseInt(value, 10);
 			loadAnalytics();
 		}
 	});
@@ -343,6 +452,7 @@ function renderCharts() {
 	renderHourlyChart();
 	renderDailyChart();
 	renderCategoriesChart();
+	renderTimeOfDay();
 }
 
 function renderDomainsChart() {
@@ -488,9 +598,11 @@ function renderCategoriesChart() {
 
 	if (charts.categories) charts.categories.destroy();
 
-	const categories = Object.entries(analyticsData.categoryStats)
-		.filter(([_, value]) => value > 0)
-		.sort((a, b) => b[1] - a[1]);
+	const allCategories = Object.entries(analyticsData.categoryStats).filter(([_, value]) => value > 0);
+	const total = allCategories.reduce((sum, [_, val]) => sum + val, 0);
+
+	// Filter out categories with less than 0.1% (rounds to 0.0%)
+	const categories = allCategories.filter(([_, value]) => (value / total) * 100 >= 0.05).sort((a, b) => b[1] - a[1]);
 
 	if (categories.length === 0) return;
 
@@ -516,14 +628,42 @@ function renderCategoriesChart() {
 	});
 }
 
+function renderTimeOfDay() {
+	if (!analyticsData?.hourlyActivity) return;
+
+	const hourly = analyticsData.hourlyActivity;
+
+	// Calculate totals for each period
+	const periods = {
+		morning: hourly.slice(6, 12).reduce((a, b) => a + b, 0), // 6-12
+		afternoon: hourly.slice(12, 18).reduce((a, b) => a + b, 0), // 12-18
+		evening: hourly.slice(18, 24).reduce((a, b) => a + b, 0), // 18-24
+		night: hourly.slice(0, 6).reduce((a, b) => a + b, 0), // 0-6
+	};
+
+	const total = Object.values(periods).reduce((a, b) => a + b, 0);
+
+	Object.entries(periods).forEach(([period, value]) => {
+		const slot = document.querySelector(`.time-slot[data-period="${period}"]`);
+		if (!slot) return;
+
+		const percent = total > 0 ? (value / total) * 100 : 0;
+		const fill = slot.querySelector('.time-fill');
+		const percentEl = slot.querySelector('.time-percent');
+
+		if (fill) fill.style.width = `${percent}%`;
+		if (percentEl) percentEl.textContent = `${percent.toFixed(0)}%`;
+	});
+}
+
 function renderCategoryLegend() {
 	if (!elements.categoryLegend || !analyticsData?.categoryStats) return;
 
-	const categories = Object.entries(analyticsData.categoryStats)
-		.filter(([_, value]) => value > 0)
-		.sort((a, b) => b[1] - a[1]);
+	const allCategories = Object.entries(analyticsData.categoryStats).filter(([_, value]) => value > 0);
+	const total = allCategories.reduce((sum, [_, val]) => sum + val, 0);
 
-	const total = categories.reduce((sum, [_, val]) => sum + val, 0);
+	// Filter out categories with less than 0.1% (rounds to 0.0%)
+	const categories = allCategories.filter(([_, value]) => (value / total) * 100 >= 0.05).sort((a, b) => b[1] - a[1]);
 
 	elements.categoryLegend.innerHTML = categories
 		.map(
@@ -600,7 +740,7 @@ function renderPagination(totalPages, totalItems, searchQuery = '') {
 	// Previous button
 	const prevBtn = document.createElement('button');
 	prevBtn.className = 'page-btn';
-	prevBtn.textContent = '← Prev';
+	prevBtn.textContent = 'Prev';
 	prevBtn.disabled = currentPage === 1;
 	prevBtn.addEventListener('click', () => goToPage(currentPage - 1, searchQuery));
 	container.appendChild(prevBtn);
@@ -655,7 +795,7 @@ function renderPagination(totalPages, totalItems, searchQuery = '') {
 	// Next button
 	const nextBtn = document.createElement('button');
 	nextBtn.className = 'page-btn';
-	nextBtn.textContent = 'Next →';
+	nextBtn.textContent = 'Next';
 	nextBtn.disabled = currentPage === totalPages;
 	nextBtn.addEventListener('click', () => goToPage(currentPage + 1, searchQuery));
 	container.appendChild(nextBtn);
