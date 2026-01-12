@@ -2371,29 +2371,6 @@ function calculateActiveTimeFromVisits(visitTimes, gapMs) {
 	return total;
 }
 
-function calculateAverageStreak(visitTimes, gapMs) {
-	if (!visitTimes || visitTimes.length < 2) return 0;
-
-	const times = [...visitTimes].sort((a, b) => a - b);
-	let streakStart = times[0];
-	let streakEnd = times[0];
-	let streakCount = 1;
-	let totalDuration = 0;
-
-	for (let i = 1; i < times.length; i++) {
-		const delta = times[i] - streakEnd;
-		if (delta > gapMs) {
-			totalDuration += Math.max(0, streakEnd - streakStart);
-			streakStart = times[i];
-			streakCount += 1;
-		}
-		streakEnd = times[i];
-	}
-
-	totalDuration += Math.max(0, streakEnd - streakStart);
-
-	return streakCount > 0 ? Math.round(totalDuration / streakCount) : 0;
-}
 
 function ruleMatches(rule, domain, url) {
 	if (!rule || !rule.pattern || !rule.category) return false;
@@ -2551,7 +2528,6 @@ async function fetchHistoryData(days = 30, startTimestamp = null, endTimestamp =
 
 		const sessions = calculateSessions(visitTimes);
 		const activeTimeTodayFromVisits = calculateActiveTimeFromVisits(visitTimesToday, ACTIVE_VISIT_GAP_MS);
-		const avgStreakMs = calculateAverageStreak(visitTimes, ACTIVE_VISIT_GAP_MS);
 
 		// Sort and limit results
 		const topDomains = Object.entries(domainStats)
@@ -2600,7 +2576,6 @@ async function fetchHistoryData(days = 30, startTimestamp = null, endTimestamp =
 				}
 				return Math.max(today, activeTimeTodayFromVisits);
 			})(),
-			avgStreakMs,
 			fetchedAt: now,
 			dateRange: {
 				start: startTime,

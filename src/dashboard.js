@@ -14,6 +14,7 @@ let selectedDays = 30;
 let historyStartDate = null;
 let historyDaysAvailable = 0;
 let customCategoryRules = [];
+let selectedCustomCategory = 'other';
 
 const CATEGORY_COLORS = {
 	development: '#22c55e',
@@ -243,7 +244,6 @@ async function init() {
 		uniqueDomains: document.getElementById('unique-domains'),
 		peakHour: document.getElementById('peak-hour'),
 		peakDay: document.getElementById('peak-day'),
-		averageStreak: document.getElementById('average-streak'),
 		customSelect: document.getElementById('date-range-select'),
 		selectTrigger: document.getElementById('select-trigger'),
 		selectValue: document.getElementById('select-value'),
@@ -265,9 +265,16 @@ async function init() {
 		sessionsAvg: document.getElementById('sessions-avg'),
 		sessionsLongest: document.getElementById('sessions-longest'),
 		customPattern: document.getElementById('custom-pattern'),
-		customCategory: document.getElementById('custom-category'),
+		customCategorySelect: document.getElementById('custom-category-select'),
+		customCategoryTrigger: document.getElementById('custom-category-trigger'),
+		customCategoryValue: document.getElementById('custom-category-value'),
+		customCategoryOptions: document.getElementById('custom-category-options'),
 		btnAddRule: document.getElementById('btn-add-rule'),
 		customRulesList: document.getElementById('custom-rules-list'),
+		shareMenu: document.getElementById('share-menu'),
+		shareButton: document.getElementById('share-button'),
+		shareCopy: document.getElementById('share-copy'),
+		shareSnapshot: document.getElementById('share-snapshot'),
 	};
 
 	// Get history start date and filter options
@@ -284,6 +291,7 @@ async function init() {
 	setupEventListeners();
 	setupTableResizers();
 	await initCustomCategories();
+	setupShareMenu();
 	await loadAnalytics();
 }
 
@@ -422,12 +430,22 @@ function setupTableResizers() {
 }
 
 async function initCustomCategories() {
-	if (!elements.customCategory || !elements.customPattern || !elements.customRulesList) return;
+	if (!elements.customCategorySelect || !elements.customPattern || !elements.customRulesList) return;
 
-	elements.customCategory.innerHTML = CATEGORY_OPTIONS.map((category) => {
-		const label = `${getCategoryIcon(category)} ${category.charAt(0).toUpperCase() + category.slice(1)}`;
-		return `<option value="${category}">${label}</option>`;
-	}).join('');
+	if (elements.customCategoryOptions) {
+		elements.customCategoryOptions.innerHTML = CATEGORY_OPTIONS.map((category, index) => {
+			const label = `${getCategoryIcon(category)} ${category.charAt(0).toUpperCase() + category.slice(1)}`;
+			const selectedClass = index === 0 ? 'selected' : '';
+			return `<div class="custom-select-option ${selectedClass}" data-value="${category}">${label}</div>`;
+		}).join('');
+	}
+
+	selectedCustomCategory = CATEGORY_OPTIONS[0] || 'other';
+	if (elements.customCategoryValue) {
+		elements.customCategoryValue.textContent = `${getCategoryIcon(selectedCustomCategory)} ${
+			selectedCustomCategory.charAt(0).toUpperCase() + selectedCustomCategory.slice(1)
+		}`;
+	}
 
 	try {
 		const response = await getCustomCategoryRules();
@@ -438,7 +456,7 @@ async function initCustomCategories() {
 
 	elements.btnAddRule?.addEventListener('click', () => {
 		const pattern = elements.customPattern.value.trim();
-		const category = elements.customCategory.value;
+		const category = selectedCustomCategory;
 
 		if (!pattern) {
 			alert('Please enter a domain or keyword');
@@ -464,7 +482,115 @@ async function initCustomCategories() {
 		saveCustomCategories();
 	});
 
+	setupCustomCategorySelect();
 	renderCustomCategories();
+}
+
+function setupCustomCategorySelect() {
+	if (!elements.customCategoryTrigger || !elements.customCategoryOptions) return;
+
+	elements.customCategoryTrigger.addEventListener('click', (event) => {
+		event.stopPropagation();
+		elements.customCategorySelect?.classList.toggle('open');
+	});
+
+	elements.customCategoryOptions.addEventListener('click', (event) => {
+		const option = event.target.closest('.custom-select-option');
+		if (!option) return;
+
+		const value = option.dataset.value || 'other';
+		selectedCustomCategory = value;
+
+		elements.customCategoryOptions.querySelectorAll('.custom-select-option').forEach((opt) => {
+			opt.classList.remove('selected');
+		});
+		option.classList.add('selected');
+
+		if (elements.customCategoryValue) {
+			elements.customCategoryValue.textContent = option.textContent.trim();
+		}
+
+		elements.customCategorySelect?.classList.remove('open');
+	});
+}
+
+function setupShareMenu() {
+	if (!elements.shareMenu || !elements.shareButton) return;
+
+	elements.shareButton.addEventListener('click', (event) => {
+		event.stopPropagation();
+		elements.shareMenu?.classList.toggle('style_active__TkBO3');
+	});
+
+	document.addEventListener('click', (event) => {
+		if (!event.target.closest('.style_share__hADne')) {
+			elements.shareMenu?.classList.remove('style_active__TkBO3');
+		}
+	});
+
+	document.addEventListener('keydown', (event) => {
+		if (event.key === 'Escape') {
+			elements.shareMenu?.classList.remove('style_active__TkBO3');
+		}
+	});
+
+	if (elements.shareCopy) {
+		elements.shareCopy.addEventListener('click', async () => {
+			const url = elements.shareCopy.getAttribute('data-url') || window.location.href;
+			const text = `Check out Your Browsing Analytics ${url}`;
+			try {
+				await navigator.clipboard.writeText(text);
+			} catch {
+				const input = document.createElement('input');
+				input.value = text;
+				document.body.appendChild(input);
+				input.select();
+				document.execCommand('copy');
+				input.remove();
+			}
+
+			elements.shareCopy.classList.add('style_active__TkBO3');
+			setTimeout(() => {
+				elements.shareCopy.classList.remove('style_active__TkBO3');
+			}, 1500);
+		});
+	}
+
+	if (elements.shareSnapshot) {
+		elements.shareSnapshot.addEventListener('click', async () => {
+			try {
+				const dataUrl = await captureVisibleScreenshot();
+				downloadDataUrl(dataUrl, `browsing-analytics-${new Date().toISOString().split('T')[0]}.png`);
+			} catch (error) {
+				console.error('Failed to capture screenshot:', error);
+				alert('Unable to capture screenshot. Please try again.');
+			}
+		});
+	}
+}
+
+function captureVisibleScreenshot() {
+	return new Promise((resolve, reject) => {
+		if (!chrome?.tabs?.captureVisibleTab) {
+			reject(new Error('captureVisibleTab not available'));
+			return;
+		}
+
+		chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
+			if (chrome.runtime.lastError || !dataUrl) {
+				reject(chrome.runtime.lastError || new Error('No data url'));
+				return;
+			}
+			resolve(dataUrl);
+		});
+	});
+}
+
+function downloadDataUrl(dataUrl, filename) {
+	const link = document.createElement('a');
+	link.href = dataUrl;
+	link.download = filename;
+	link.click();
 }
 
 async function saveCustomCategories() {
@@ -574,7 +700,6 @@ function showError() {
 	if (elements.uniqueDomains) elements.uniqueDomains.textContent = '--';
 	if (elements.peakHour) elements.peakHour.textContent = '--';
 	if (elements.peakDay) elements.peakDay.textContent = '--';
-	if (elements.averageStreak) elements.averageStreak.textContent = '--';
 	if (elements.sessionsCount) elements.sessionsCount.textContent = '--';
 	if (elements.sessionsAvg) elements.sessionsAvg.textContent = '--';
 	if (elements.sessionsLongest) elements.sessionsLongest.textContent = '--';
@@ -606,11 +731,6 @@ function updateStats() {
 		} else {
 			if (elements.peakDay) elements.peakDay.textContent = '--';
 		}
-	}
-
-	if (elements.averageStreak) {
-		const streakMs = analyticsData.avgStreakMs || 0;
-		elements.averageStreak.textContent = formatDuration(streakMs);
 	}
 }
 
