@@ -11,6 +11,26 @@ let cachedData = null;
 let cacheTimestamp = 0;
 let cachedDays = 0;
 
+// Active time tracking state
+const ACTIVE_TIME_STORAGE_KEY = 'activeTimeByDomain';
+const ACTIVE_TIME_TOTAL_KEY = 'activeTimeTotal';
+const ACTIVE_TIME_TODAY_KEY = 'activeTimeToday';
+const ACTIVE_TIME_DATE_KEY = 'activeTimeDate';
+const CUSTOM_CATEGORY_RULES_KEY = 'customCategoryRules';
+
+let activeTimeByDomain = {};
+let activeTimeTotal = 0;
+let activeTimeToday = 0;
+let activeTimeDate = '';
+let activeTabId = null;
+let activeDomain = null;
+let activeSessionStart = null;
+let isWindowFocused = true;
+let idleState = 'active';
+let activeTimeSaveTimer = null;
+
+let customCategoryRules = [];
+
 /**
  * Domain categorization rules - EXPANDED
  */
@@ -2048,6 +2068,15 @@ const CATEGORY_RULES = {
 	],
 };
 
+const SEARCH_ENGINES = [
+	{ name: 'google', host: /(^|\.)google\./i, queryParam: 'q' },
+	{ name: 'bing', host: /(^|\.)bing\.com$/i, queryParam: 'q' },
+	{ name: 'duckduckgo', host: /(^|\.)duckduckgo\.com$/i, queryParam: 'q' },
+	{ name: 'yahoo', host: /(^|\.)search\.yahoo\.com$/i, queryParam: 'p' },
+	{ name: 'brave', host: /(^|\.)search\.brave\.com$/i, queryParam: 'q' },
+	{ name: 'ecosia', host: /(^|\.)ecosia\.org$/i, queryParam: 'q' },
+];
+
 /**
  * URL path patterns for news/blog/article detection
  * These patterns match against the full URL path
@@ -2158,6 +2187,13 @@ function isNewsPath(url) {
  * @returns {string} Category name
  */
 function categorize(domain, url = '') {
+	// Custom rules take priority
+	for (const rule of customCategoryRules) {
+		if (ruleMatches(rule, domain, url)) {
+			return rule.category;
+		}
+	}
+
 	// First check domain-based rules
 	for (const [category, patterns] of Object.entries(CATEGORY_RULES)) {
 		for (const pattern of patterns) {
@@ -2187,6 +2223,137 @@ function extractDomain(url) {
 	} catch {
 		return 'unknown';
 	}
+}
+
+function extractHttpDomain(url) {
+	try {
+		const urlObj = new URL(url);
+		if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') return null;
+		return urlObj.hostname.replace(/^www\./, '');
+	} catch {
+		return null;
+	}
+}
+
+function getDateKey() {
+	return new Date().toISOString().slice(0, 10);
+}
+
+function ensureActiveTimeDate() {
+	const key = getDateKey();
+	if (key !== activeTimeDate) {
+		activeTimeDate = key;
+		activeTimeToday = 0;
+	}
+}
+
+function scheduleActiveTimeSave() {
+	if (activeTimeSaveTimer) clearTimeout(activeTimeSaveTimer);
+	activeTimeSaveTimer = setTimeout(() => {
+		chrome.storage.local.set({
+			[ACTIVE_TIME_STORAGE_KEY]: activeTimeByDomain,
+			[ACTIVE_TIME_TOTAL_KEY]: activeTimeTotal,
+			[ACTIVE_TIME_TODAY_KEY]: activeTimeToday,
+			[ACTIVE_TIME_DATE_KEY]: activeTimeDate,
+		});
+	}, 500);
+}
+
+function canTrackActiveTime() {
+	return Boolean(activeDomain) && isWindowFocused && idleState === 'active';
+}
+
+function stopActiveSession() {
+	if (!activeSessionStart) return;
+	const now = Date.now();
+	const elapsed = now - activeSessionStart;
+	activeSessionStart = null;
+
+	if (elapsed <= 0 || !activeDomain) return;
+	ensureActiveTimeDate();
+
+	activeTimeTotal += elapsed;
+	activeTimeToday += elapsed;
+	activeTimeByDomain[activeDomain] = (activeTimeByDomain[activeDomain] || 0) + elapsed;
+	scheduleActiveTimeSave();
+}
+
+function startActiveSession() {
+	if (activeSessionStart || !canTrackActiveTime()) return;
+	activeSessionStart = Date.now();
+}
+
+function updateActiveDomain(tab) {
+	const domain = tab ? extractHttpDomain(tab.url) : null;
+	if (domain === activeDomain) {
+		startActiveSession();
+		return;
+	}
+
+	stopActiveSession();
+	activeDomain = domain;
+	startActiveSession();
+}
+
+function extractSearchQuery(url) {
+	try {
+		const urlObj = new URL(url);
+		if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') return null;
+
+		const engine = SEARCH_ENGINES.find((item) => item.host.test(urlObj.hostname));
+		if (!engine) return null;
+
+		const query = urlObj.searchParams.get(engine.queryParam);
+		if (!query) return null;
+
+		const cleaned = query.trim();
+		if (!cleaned) return null;
+
+		return { engine: engine.name, query: cleaned };
+	} catch {
+		return null;
+	}
+}
+
+function ruleMatches(rule, domain, url) {
+	if (!rule || !rule.pattern || !rule.category) return false;
+	const pattern = String(rule.pattern).trim();
+	if (!pattern) return false;
+
+	const targetDomain = (domain || '').toLowerCase();
+	const targetUrl = (url || '').toLowerCase();
+
+	if (pattern.startsWith('/') && pattern.endsWith('/') && pattern.length > 2) {
+		try {
+			const re = new RegExp(pattern.slice(1, -1), 'i');
+			return re.test(domain) || (url && re.test(url));
+		} catch {
+			return false;
+		}
+	}
+
+	const needle = pattern.toLowerCase();
+	return targetDomain.includes(needle) || targetUrl.includes(needle);
+}
+
+function loadPersistentState() {
+	chrome.storage.local.get(
+		[
+			ACTIVE_TIME_STORAGE_KEY,
+			ACTIVE_TIME_TOTAL_KEY,
+			ACTIVE_TIME_TODAY_KEY,
+			ACTIVE_TIME_DATE_KEY,
+			CUSTOM_CATEGORY_RULES_KEY,
+		],
+		(data) => {
+			activeTimeByDomain = data[ACTIVE_TIME_STORAGE_KEY] || {};
+			activeTimeTotal = data[ACTIVE_TIME_TOTAL_KEY] || 0;
+			activeTimeToday = data[ACTIVE_TIME_TODAY_KEY] || 0;
+			activeTimeDate = data[ACTIVE_TIME_DATE_KEY] || getDateKey();
+			customCategoryRules = Array.isArray(data[CUSTOM_CATEGORY_RULES_KEY]) ? data[CUSTOM_CATEGORY_RULES_KEY] : [];
+			ensureActiveTimeDate();
+		}
+	);
 }
 
 /**
@@ -2226,6 +2393,7 @@ async function fetchHistoryData(days = 30, startTimestamp = null, endTimestamp =
 		const domainStats = {};
 		const hourlyActivity = new Array(24).fill(0);
 		const dailyActivity = new Array(7).fill(0);
+		const searchStats = { total: 0, engines: {}, queries: {} };
 		// Initialize ALL categories from CATEGORY_RULES + 'other'
 		const categoryStats = {};
 		for (const category of Object.keys(CATEGORY_RULES)) {
@@ -2256,6 +2424,14 @@ async function fetchHistoryData(days = 30, startTimestamp = null, endTimestamp =
 			if (visitCount === 0) continue;
 
 			totalVisits += visitCount;
+
+			const searchInfo = extractSearchQuery(item.url);
+			if (searchInfo) {
+				const queryKey = searchInfo.query.toLowerCase();
+				searchStats.total += visitCount;
+				searchStats.engines[searchInfo.engine] = (searchStats.engines[searchInfo.engine] || 0) + visitCount;
+				searchStats.queries[queryKey] = (searchStats.queries[queryKey] || 0) + visitCount;
+			}
 
 			// Domain stats
 			if (!domainStats[domain]) {
@@ -2298,16 +2474,28 @@ async function fetchHistoryData(days = 30, startTimestamp = null, endTimestamp =
 			.sort((a, b) => b.visits - a.visits)
 			.slice(0, 50);
 
+		const topSearches = Object.entries(searchStats.queries)
+			.map(([query, count]) => ({ query, count }))
+			.sort((a, b) => b.count - a.count)
+			.slice(0, 10);
+
 		const result = {
 			topDomains,
 			topPages,
 			hourlyActivity,
 			dailyActivity,
 			categoryStats,
+			searchStats: {
+				total: searchStats.total,
+				engines: searchStats.engines,
+				topSearches,
+			},
 			todayVisits,
 			totalVisits,
 			totalItems: historyItems.length,
 			uniqueDomains: Object.keys(domainStats).length, // Add actual unique domains count
+			activeTimeTotal,
+			activeTimeToday,
 			fetchedAt: now,
 			dateRange: {
 				start: startTime,
@@ -2438,9 +2626,76 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 		});
 		return true;
 	}
+
+	if (message.type === 'GET_CUSTOM_CATEGORY_RULES') {
+		sendResponse({ rules: customCategoryRules });
+		return true;
+	}
+
+	if (message.type === 'SET_CUSTOM_CATEGORY_RULES') {
+		customCategoryRules = Array.isArray(message.rules) ? message.rules : [];
+		chrome.storage.local.set({ [CUSTOM_CATEGORY_RULES_KEY]: customCategoryRules }, () => {
+			cachedData = null;
+			cacheTimestamp = 0;
+			cachedDays = 0;
+			sendResponse({ success: true });
+		});
+		return true;
+	}
 });
 
 // Initial data fetch on install
 chrome.runtime.onInstalled.addListener(() => {
 	fetchHistoryData(30);
+});
+
+loadPersistentState();
+
+chrome.idle.setDetectionInterval(60);
+
+chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+	if (tabs && tabs[0]) {
+		activeTabId = tabs[0].id;
+		updateActiveDomain(tabs[0]);
+	}
+});
+
+chrome.tabs.onActivated.addListener((activeInfo) => {
+	activeTabId = activeInfo.tabId;
+	chrome.tabs.get(activeInfo.tabId, (tab) => {
+		updateActiveDomain(tab);
+	});
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+	if (tabId !== activeTabId) return;
+	if (changeInfo.url || changeInfo.status === 'complete') {
+		updateActiveDomain(tab);
+	}
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+	if (tabId === activeTabId) {
+		stopActiveSession();
+		activeTabId = null;
+		activeDomain = null;
+	}
+});
+
+chrome.windows.onFocusChanged.addListener((windowId) => {
+	isWindowFocused = windowId !== chrome.windows.WINDOW_ID_NONE;
+	if (!isWindowFocused) {
+		stopActiveSession();
+	} else {
+		startActiveSession();
+	}
+});
+
+chrome.idle.onStateChanged.addListener((state) => {
+	idleState = state;
+	if (state !== 'active') {
+		stopActiveSession();
+	} else {
+		startActiveSession();
+	}
 });

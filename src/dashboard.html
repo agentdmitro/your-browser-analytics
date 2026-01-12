@@ -128,6 +128,18 @@
                     <div class="stat-label">Most Active Day</div>
                 </div>
             </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="active-time">--</div>
+                    <div class="stat-label">Active Time Today</div>
+                </div>
+            </div>
         </section>
 
         <!-- Charts Grid -->
@@ -193,6 +205,17 @@
                 <div class="category-legend" id="category-legend"></div>
             </section>
 
+            <!-- Search Queries -->
+            <section class="chart-card">
+                <div class="chart-header">
+                    <h2>Search Queries</h2>
+                </div>
+                <div class="chart-body chart-body-search">
+                    <div class="search-summary" id="search-summary">--</div>
+                    <div class="search-list" id="search-list"></div>
+                </div>
+            </section>
+
             <!-- Top Domains - Full Width -->
             <section class="chart-card chart-wide">
                 <div class="chart-header">
@@ -228,6 +251,24 @@
                         </tbody>
                     </table>
                     <div class="table-pagination" id="pagination"></div>
+                </div>
+            </section>
+
+            <!-- Custom Categories -->
+            <section class="chart-card chart-wide" id="custom-categories-card">
+                <div class="chart-header">
+                    <h2>Custom Categories</h2>
+                </div>
+                <div class="chart-body chart-body-custom">
+                    <div class="custom-category-form">
+                        <input type="text" id="custom-pattern" placeholder="Domain or keyword (e.g. figma.com)">
+                        <select id="custom-category"></select>
+                        <button class="btn-apply" id="btn-add-rule">Add</button>
+                    </div>
+                    <div class="custom-category-help">
+                        Use plain text or a regex wrapped in slashes, e.g. /.*\\.google\\.com/
+                    </div>
+                    <div class="custom-category-list" id="custom-rules-list"></div>
                 </div>
             </section>
         </div>

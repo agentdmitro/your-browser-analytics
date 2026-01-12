@@ -13,6 +13,91 @@ let customEndDate = null;
 let selectedDays = 30;
 let historyStartDate = null;
 let historyDaysAvailable = 0;
+let customCategoryRules = [];
+
+const CATEGORY_COLORS = {
+	development: '#22c55e',
+	work: '#6366f1',
+	social: '#ec4899',
+	entertainment: '#f59e0b',
+	video: '#ff6b6b',
+	gaming: '#9333ea',
+	music: '#a855f7',
+	shopping: '#10b981',
+	news: '#3b82f6',
+	search: '#8b5cf6',
+	finance: '#14b8a6',
+	education: '#f97316',
+	ai: '#06b6d4',
+	travel: '#0ea5e9',
+	food: '#ef4444',
+	health: '#84cc16',
+	cloud: '#7c3aed',
+	reference: '#64748b',
+	communication: '#f472b6',
+	productivity: '#fbbf24',
+	government: '#dc2626',
+	utilities: '#78716c',
+	design: '#e879f9',
+	russia: '#1e3a5f',
+	podcast: '#8b5cf6',
+	realestate: '#0d9488',
+	jobs: '#ea580c',
+	dating: '#f43f5e',
+	sports: '#16a34a',
+	weather: '#0284c7',
+	automotive: '#525252',
+	legal: '#7c2d12',
+	hosting: '#4f46e5',
+	forums: '#be123c',
+	streaming: '#c026d3',
+	modeling3d: '#0891b2',
+	security: '#15803d',
+	other: '#6b7280',
+};
+
+const CATEGORY_ICONS = {
+	development: '🖥️',
+	work: '💼',
+	social: '💬',
+	entertainment: '🎬',
+	video: '📺',
+	gaming: '🎮',
+	music: '🎵',
+	shopping: '🛒',
+	news: '📰',
+	search: '🔍',
+	finance: '💰',
+	education: '📚',
+	ai: '🤖',
+	travel: '✈️',
+	food: '🍔',
+	health: '🏥',
+	cloud: '☁️',
+	reference: '📖',
+	communication: '📞',
+	productivity: '📋',
+	government: '🏛️',
+	utilities: '🔧',
+	design: '🎨',
+	russia: '🤡',
+	podcast: '🎙️',
+	realestate: '🏠',
+	jobs: '💼',
+	dating: '💕',
+	sports: '⚽',
+	weather: '🌤️',
+	automotive: '🚗',
+	legal: '⚖️',
+	hosting: '🌐',
+	forums: '💭',
+	streaming: '📡',
+	modeling3d: '🧊',
+	security: '🔒',
+	other: '🌐',
+};
+
+const CATEGORY_OPTIONS = Object.keys(CATEGORY_COLORS);
 
 // DOM Elements - will be initialized after DOM loads
 let elements = {};
@@ -22,6 +107,24 @@ function formatNumber(num) {
 	if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
 	if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
 	return num.toString();
+}
+
+function formatDuration(ms) {
+	const totalMinutes = Math.floor(ms / 60000);
+	if (totalMinutes < 1) return '<1m';
+
+	const totalHours = Math.floor(totalMinutes / 60);
+	const minutes = totalMinutes % 60;
+	const days = Math.floor(totalHours / 24);
+	const hours = totalHours % 24;
+
+	if (days > 0) {
+		return `${days}d ${hours}h`;
+	}
+	if (totalHours > 0) {
+		return `${totalHours}h ${minutes}m`;
+	}
+	return `${minutes}m`;
 }
 
 function getHourLabel(hour) {
@@ -34,91 +137,11 @@ function getDayName(index) {
 }
 
 function getCategoryColor(category) {
-	const colors = {
-		development: '#22c55e',
-		work: '#6366f1',
-		social: '#ec4899',
-		entertainment: '#f59e0b',
-		video: '#ff6b6b',
-		gaming: '#9333ea',
-		music: '#a855f7',
-		shopping: '#10b981',
-		news: '#3b82f6',
-		search: '#8b5cf6',
-		finance: '#14b8a6',
-		education: '#f97316',
-		ai: '#06b6d4',
-		travel: '#0ea5e9',
-		food: '#ef4444',
-		health: '#84cc16',
-		cloud: '#7c3aed',
-		reference: '#64748b',
-		communication: '#f472b6',
-		productivity: '#fbbf24',
-		government: '#dc2626',
-		utilities: '#78716c',
-		design: '#e879f9',
-		russia: '#1e3a5f',
-		podcast: '#8b5cf6',
-		realestate: '#0d9488',
-		jobs: '#ea580c',
-		dating: '#f43f5e',
-		sports: '#16a34a',
-		weather: '#0284c7',
-		automotive: '#525252',
-		legal: '#7c2d12',
-		hosting: '#4f46e5',
-		forums: '#be123c',
-		streaming: '#c026d3',
-		modeling3d: '#0891b2',
-		security: '#15803d',
-		other: '#6b7280',
-	};
-	return colors[category] || colors.other;
+	return CATEGORY_COLORS[category] || CATEGORY_COLORS.other;
 }
 
 function getCategoryIcon(category) {
-	const icons = {
-		development: '🖥️',
-		work: '💼',
-		social: '💬',
-		entertainment: '🎬',
-		video: '📺',
-		gaming: '🎮',
-		music: '🎵',
-		shopping: '🛒',
-		news: '📰',
-		search: '🔍',
-		finance: '💰',
-		education: '📚',
-		ai: '🤖',
-		travel: '✈️',
-		food: '🍔',
-		health: '🏥',
-		cloud: '☁️',
-		reference: '📖',
-		communication: '📞',
-		productivity: '📋',
-		government: '🏛️',
-		utilities: '🔧',
-		design: '🎨',
-		russia: '🤡',
-		podcast: '🎙️',
-		realestate: '🏠',
-		jobs: '💼',
-		dating: '💕',
-		sports: '⚽',
-		weather: '🌤️',
-		automotive: '🚗',
-		legal: '⚖️',
-		hosting: '🌐',
-		forums: '💭',
-		streaming: '📡',
-		modeling3d: '🧊',
-		security: '🔒',
-		other: '🌐',
-	};
-	return icons[category] || icons.other;
+	return CATEGORY_ICONS[category] || CATEGORY_ICONS.other;
 }
 
 function calcPercentage(value, total) {
@@ -178,6 +201,30 @@ async function getHistoryStartDate() {
 	});
 }
 
+async function getCustomCategoryRules() {
+	return new Promise((resolve, reject) => {
+		chrome.runtime.sendMessage({ type: 'GET_CUSTOM_CATEGORY_RULES' }, (response) => {
+			if (chrome.runtime.lastError) {
+				reject(chrome.runtime.lastError);
+				return;
+			}
+			resolve(response);
+		});
+	});
+}
+
+async function setCustomCategoryRules(rules) {
+	return new Promise((resolve, reject) => {
+		chrome.runtime.sendMessage({ type: 'SET_CUSTOM_CATEGORY_RULES', rules }, (response) => {
+			if (chrome.runtime.lastError) {
+				reject(chrome.runtime.lastError);
+				return;
+			}
+			resolve(response);
+		});
+	});
+}
+
 function downloadAsJson(data, filename = 'browsing-analytics.json') {
 	const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
 	const url = URL.createObjectURL(blob);
@@ -196,6 +243,7 @@ async function init() {
 		uniqueDomains: document.getElementById('unique-domains'),
 		peakHour: document.getElementById('peak-hour'),
 		peakDay: document.getElementById('peak-day'),
+		activeTime: document.getElementById('active-time'),
 		customSelect: document.getElementById('date-range-select'),
 		selectTrigger: document.getElementById('select-trigger'),
 		selectValue: document.getElementById('select-value'),
@@ -211,6 +259,12 @@ async function init() {
 		pagination: document.getElementById('pagination'),
 		pageSearch: document.getElementById('page-search'),
 		categoryLegend: document.getElementById('category-legend'),
+		searchSummary: document.getElementById('search-summary'),
+		searchList: document.getElementById('search-list'),
+		customPattern: document.getElementById('custom-pattern'),
+		customCategory: document.getElementById('custom-category'),
+		btnAddRule: document.getElementById('btn-add-rule'),
+		customRulesList: document.getElementById('custom-rules-list'),
 	};
 
 	// Get history start date and filter options
@@ -225,6 +279,8 @@ async function init() {
 
 	setupCustomSelect();
 	setupEventListeners();
+	setupTableResizers();
+	await initCustomCategories();
 	await loadAnalytics();
 }
 
@@ -327,6 +383,120 @@ function setupEventListeners() {
 	}
 }
 
+function setupTableResizers() {
+	const table = document.getElementById('pages-table');
+	const resizers = table?.querySelectorAll('th .col-resizer');
+	const cols = table?.querySelectorAll('colgroup col');
+
+	if (!table || !resizers || !cols) return;
+
+	resizers.forEach((resizer, index) => {
+		resizer.addEventListener('mousedown', (event) => {
+			const col = cols[index];
+			if (!col) return;
+
+			const startX = event.clientX;
+			const startWidth = col.getBoundingClientRect().width;
+			const minWidth = index === 0 ? 50 : index === 1 ? 140 : 180;
+
+			function onMouseMove(e) {
+				const delta = e.clientX - startX;
+				const nextWidth = Math.max(minWidth, startWidth + delta);
+				col.style.width = `${nextWidth}px`;
+			}
+
+			function onMouseUp() {
+				document.removeEventListener('mousemove', onMouseMove);
+				document.removeEventListener('mouseup', onMouseUp);
+				document.body.style.cursor = '';
+			}
+
+			document.body.style.cursor = 'col-resize';
+			document.addEventListener('mousemove', onMouseMove);
+			document.addEventListener('mouseup', onMouseUp);
+		});
+	});
+}
+
+async function initCustomCategories() {
+	if (!elements.customCategory || !elements.customPattern || !elements.customRulesList) return;
+
+	elements.customCategory.innerHTML = CATEGORY_OPTIONS.map((category) => {
+		const label = `${getCategoryIcon(category)} ${category.charAt(0).toUpperCase() + category.slice(1)}`;
+		return `<option value="${category}">${label}</option>`;
+	}).join('');
+
+	try {
+		const response = await getCustomCategoryRules();
+		customCategoryRules = response?.rules || [];
+	} catch (e) {
+		console.error('Failed to load custom categories:', e);
+	}
+
+	elements.btnAddRule?.addEventListener('click', () => {
+		const pattern = elements.customPattern.value.trim();
+		const category = elements.customCategory.value;
+
+		if (!pattern) {
+			alert('Please enter a domain or keyword');
+			return;
+		}
+
+		const rule = {
+			id: crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+			pattern,
+			category,
+		};
+
+		customCategoryRules = [...customCategoryRules, rule];
+		elements.customPattern.value = '';
+		saveCustomCategories();
+	});
+
+	elements.customRulesList.addEventListener('click', (event) => {
+		const button = event.target.closest('.rule-remove');
+		if (!button) return;
+		const ruleId = button.dataset.id;
+		customCategoryRules = customCategoryRules.filter((rule) => rule.id !== ruleId);
+		saveCustomCategories();
+	});
+
+	renderCustomCategories();
+}
+
+async function saveCustomCategories() {
+	try {
+		await setCustomCategoryRules(customCategoryRules);
+		renderCustomCategories();
+		chrome.runtime.sendMessage({ type: 'CLEAR_CACHE' }, () => {
+			loadAnalytics();
+		});
+	} catch (e) {
+		console.error('Failed to save custom categories:', e);
+	}
+}
+
+function renderCustomCategories() {
+	if (!elements.customRulesList) return;
+
+	if (!customCategoryRules.length) {
+		elements.customRulesList.innerHTML = '<div class="custom-category-help">No custom rules yet.</div>';
+		return;
+	}
+
+	elements.customRulesList.innerHTML = customCategoryRules
+		.map(
+			(rule) => `
+				<div class="custom-category-item">
+					<div class="rule-text">${escapeHtml(rule.pattern)}</div>
+					<div class="rule-meta">${getCategoryIcon(rule.category)} ${escapeHtml(rule.category)}</div>
+					<button class="rule-remove" data-id="${rule.id}">Remove</button>
+				</div>
+			`
+		)
+		.join('');
+}
+
 function handleApplyCustomRange() {
 	const startDate = elements.dateStart?.value;
 	const endDate = elements.dateEnd?.value;
@@ -386,6 +556,7 @@ async function loadAnalytics() {
 		renderCharts();
 		renderPagesTable();
 		renderCategoryLegend();
+		renderSearchStats();
 	} catch (error) {
 		console.error('Failed to load analytics:', error);
 		showError();
@@ -399,6 +570,7 @@ function showError() {
 	if (elements.uniqueDomains) elements.uniqueDomains.textContent = '--';
 	if (elements.peakHour) elements.peakHour.textContent = '--';
 	if (elements.peakDay) elements.peakDay.textContent = '--';
+	if (elements.activeTime) elements.activeTime.textContent = '--';
 }
 
 function updateStats() {
@@ -427,6 +599,11 @@ function updateStats() {
 		} else {
 			if (elements.peakDay) elements.peakDay.textContent = '--';
 		}
+	}
+
+	if (elements.activeTime) {
+		const activeMs = analyticsData.activeTimeToday || 0;
+		elements.activeTime.textContent = formatDuration(activeMs);
 	}
 }
 
@@ -523,6 +700,8 @@ function renderHourlyChart() {
 					tension: 0.4,
 					pointRadius: 3,
 					pointBackgroundColor: '#6366f1',
+					pointHoverRadius: 7,
+					pointHoverBorderWidth: 2,
 				},
 			],
 		},
@@ -674,6 +853,42 @@ function renderCategoryLegend() {
 				<span style="margin-left: 4px; opacity: 0.6">${calcPercentage(value, total)}</span>
 			</div>
 		`
+		)
+		.join('');
+}
+
+function renderSearchStats() {
+	if (!elements.searchSummary || !elements.searchList) return;
+
+	const stats = analyticsData?.searchStats;
+	if (!stats || stats.total === 0) {
+		elements.searchSummary.textContent = 'No search queries detected';
+		elements.searchList.innerHTML = '';
+		return;
+	}
+
+	const engines = Object.entries(stats.engines || {})
+		.map(([engine, count]) => ({ engine, count }))
+		.sort((a, b) => b.count - a.count)
+		.slice(0, 3)
+		.map((entry) => `${entry.engine}: ${formatNumber(entry.count)}`)
+		.join(' • ');
+
+	elements.searchSummary.textContent = `${formatNumber(stats.total)} searches${engines ? ` • ${engines}` : ''}`;
+
+	if (!stats.topSearches || stats.topSearches.length === 0) {
+		elements.searchList.innerHTML = '';
+		return;
+	}
+
+	elements.searchList.innerHTML = stats.topSearches
+		.map(
+			(item) => `
+				<div class="search-item">
+					<div class="search-query" title="${escapeHtml(item.query)}">${escapeHtml(item.query)}</div>
+					<div class="search-count">${formatNumber(item.count)}</div>
+				</div>
+			`
 		)
 		.join('');
 }
