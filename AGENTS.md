@@ -10,7 +10,7 @@ in a popup and a full dashboard. All processing is local; no network calls.
 - src/popup.html + src/popup.js + src/popup.css: quick stats UI.
 - src/dashboard.html + src/dashboard.js + src/dashboard.css: full analytics UI.
 - src/utils.js: shared helpers (currently not imported by popup/dashboard).
-- manifest.json: permissions (history, storage, tabs).
+- manifest.json: permissions (history, storage, tabs, idle).
 
 ## Data Flow
 - UI sends messages to background:
