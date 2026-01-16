@@ -840,8 +840,8 @@ body {
 
 .style_share__hADne {
 	position: fixed;
-	top: 16px;
-	right: 16px;
+	top: 20px;
+	right: 20px;
 	z-index: 120;
 }
 
@@ -871,10 +871,14 @@ body {
 	justify-content: center;
 }
 
-.style_share__hADne .style_icon__uYt84 svg {
+.style_share__hADne .style_icon__uYt84 svg,
+.style_share__hADne .style_icon__uYt84 img {
 	width: 18px;
 	height: 18px;
 	color: var(--text-secondary);
+}
+.style_share__hADne .style_icon__uYt84 img {
+	display: block;
 }
 
 @media (any-hover: hover) {
@@ -931,11 +935,15 @@ body {
 	position: relative;
 }
 
-.style_share__hADne .style_wrap__GlSlr .style_item__Ai4or svg {
+.style_share__hADne .style_wrap__GlSlr .style_item__Ai4or svg,
+.style_share__hADne .style_wrap__GlSlr .style_item__Ai4or img {
 	width: 14px;
 	height: 14px;
 	color: var(--text-secondary);
 	transition: all 0.2s ease-in-out;
+}
+.style_share__hADne .style_wrap__GlSlr .style_item__Ai4or img {
+	display: block;
 }
 
 .style_share__hADne .style_wrap__GlSlr .style_item__Ai4or:before {
@@ -954,7 +962,8 @@ body {
 		border-color: var(--gray);
 	}
 
-	.style_share__hADne .style_wrap__GlSlr .style_item__Ai4or:hover svg {
+	.style_share__hADne .style_wrap__GlSlr .style_item__Ai4or:hover svg,
+	.style_share__hADne .style_wrap__GlSlr .style_item__Ai4or:hover img {
 		color: var(--text-primary);
 	}
 }
