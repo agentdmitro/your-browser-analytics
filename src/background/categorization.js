@@ -76,10 +76,10 @@ const CATEGORY_RULES = {
 		/hex\.pm/i,
 		/hackage\.haskell/i,
 		/pkg\.julialang/i,
-	],
-	work: [
 		/github\.com/i,
 		/gitlab\.com/i,
+	],
+	work: [
 		/bitbucket\.org/i,
 		/stackoverflow\.com/i,
 		/stackexchange\.com/i,
@@ -460,16 +460,7 @@ const CATEGORY_RULES = {
 		/deezer\.com/i,
 		/last\.fm/i,
 	],
-	sports: [
-		/espn\.com/i,
-		/nfl\.com/i,
-		/nba\.com/i,
-		/mlb\.com/i,
-		/nhl\.com/i,
-		/fifa\.com/i,
-		/uefa\.com/i,
-		/olympics\.com/i,
-	],
+	sports: [/espn\.com/i, /nfl\.com/i, /nba\.com/i, /mlb\.com/i, /nhl\.com/i, /fifa\.com/i, /uefa\.com/i, /olympics\.com/i],
 	food: [
 		/allrecipes\.com/i,
 		/foodnetwork\.com/i,
