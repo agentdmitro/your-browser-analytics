@@ -91,6 +91,12 @@ function scheduleActiveTimeSave() {
 	}, 500);
 }
 
+function clearCachedAnalytics() {
+	cachedData = null;
+	cacheTimestamp = 0;
+	cachedDays = 0;
+}
+
 function canTrackActiveTime() {
 	return Boolean(activeDomain) && isWindowFocused && idleState === 'active';
 }
@@ -439,9 +445,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 	}
 
 	if (message.type === 'CLEAR_CACHE') {
-		cachedData = null;
-		cacheTimestamp = 0;
-		cachedDays = 0;
+		clearCachedAnalytics();
 		sendResponse({ success: true });
 		return true;
 	}
@@ -524,10 +528,78 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 	if (message.type === 'SET_CUSTOM_CATEGORY_RULES') {
 		customCategoryRules = Array.isArray(message.rules) ? message.rules : [];
 		chrome.storage.local.set({ [CUSTOM_CATEGORY_RULES_KEY]: customCategoryRules }, () => {
-			cachedData = null;
-			cacheTimestamp = 0;
-			cachedDays = 0;
+			clearCachedAnalytics();
 			sendResponse({ success: true });
+		});
+		return true;
+	}
+
+	if (message.type === 'DELETE_HISTORY_RANGE') {
+		const startTime = Number(message.startTime);
+		const endTime = Number(message.endTime);
+
+		if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || startTime > endTime) {
+			sendResponse({ success: false, error: 'Invalid time range.' });
+			return true;
+		}
+
+		try {
+			Promise.resolve(chrome.history.deleteRange({ startTime, endTime }))
+				.then(() => {
+					clearCachedAnalytics();
+					sendResponse({ success: true });
+				})
+				.catch((error) => {
+					console.error('Failed to delete history range:', error);
+					sendResponse({ success: false, error: error?.message || 'Failed to delete history range.' });
+				});
+		} catch (error) {
+			console.error('Failed to delete history range:', error);
+			sendResponse({ success: false, error: error?.message || 'Failed to delete history range.' });
+		}
+		return true;
+	}
+
+	if (message.type === 'DELETE_HISTORY_URLS') {
+		const urls = Array.isArray(message.urls) ? message.urls : [];
+		if (urls.length === 0) {
+			sendResponse({ success: false, error: 'No URLs provided.' });
+			return true;
+		}
+
+		let remaining = urls.length;
+		let firstError = null;
+
+		urls.forEach((url) => {
+			try {
+				chrome.history.deleteUrl({ url }, () => {
+					if (chrome.runtime.lastError && !firstError) {
+						firstError = chrome.runtime.lastError;
+					}
+					remaining -= 1;
+					if (remaining === 0) {
+						if (firstError) {
+							console.error('Failed to delete history URLs:', firstError);
+							sendResponse({
+								success: false,
+								error: firstError.message || 'Failed to delete history URLs.',
+							});
+							return;
+						}
+						clearCachedAnalytics();
+						sendResponse({ success: true, deletedCount: urls.length });
+					}
+				});
+			} catch (error) {
+				if (!firstError) {
+					firstError = error;
+				}
+				remaining -= 1;
+				if (remaining === 0) {
+					console.error('Failed to delete history URLs:', firstError);
+					sendResponse({ success: false, error: firstError?.message || 'Failed to delete history URLs.' });
+				}
+			}
 		});
 		return true;
 	}
