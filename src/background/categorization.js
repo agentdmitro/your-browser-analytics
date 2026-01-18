@@ -81,6 +81,7 @@ const CATEGORY_RULES = {
 	],
 	work: [
 		/bitbucket\.org/i,
+		/clockify\.me/i,
 		/stackoverflow\.com/i,
 		/stackexchange\.com/i,
 		/slack\.com/i,
@@ -363,6 +364,8 @@ const CATEGORY_RULES = {
 		/olx\.ua/i,
 		/olx\.com/i,
 		/olx\.pl/i,
+		/rozetka\.ua/i,
+		/rozetka\.com\.ua/i,
 	],
 	education: [
 		/coursera\.org/i,
