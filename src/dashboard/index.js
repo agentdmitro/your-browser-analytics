@@ -4,23 +4,34 @@
  */
 
 // State
-let analyticsData = null;
-let charts = {};
-let currentPage = 1;
-const PAGE_SIZE = 10;
-let customStartDate = null;
-let customEndDate = null;
-let selectedDays = 30;
-let historyStartDate = null;
-let historyDaysAvailable = 0;
-let customCategoryRules = [];
-let selectedCustomCategory = 'other';
+	let analyticsData = null;
+	let charts = {};
+	let currentPage = 1;
+	const PAGE_SIZE = 10;
+	let customStartDate = null;
+	let customEndDate = null;
+	let selectedDays = 30;
+	let historyStartDate = null;
+	let historyDaysAvailable = 0;
+	let customCategoryRules = [];
+	let selectedCustomCategory = 'other';
+	let managementUrls = [];
+	const VIEW_STORAGE_KEY = 'dashboardActiveView';
+	let historyPickerQuery = '';
+	let historyPickerEndTime = null;
+	let historyPickerLoading = false;
+	let historyPickerHasMore = true;
+	let historyPickerUrlSet = new Set();
+	let dateStartPicker = null;
+	let dateEndPicker = null;
+	let managementDatePicker = null;
 
 const CATEGORY_COLORS = {
 	development: '#22c55e',
 	work: '#6366f1',
 	social: '#ec4899',
 	entertainment: '#f59e0b',
+	movies: '#f97316',
 	video: '#ff6b6b',
 	gaming: '#9333ea',
 	music: '#a855f7',
@@ -37,6 +48,7 @@ const CATEGORY_COLORS = {
 	reference: '#64748b',
 	communication: '#f472b6',
 	productivity: '#fbbf24',
+	mail: '#0f766e',
 	government: '#dc2626',
 	utilities: '#78716c',
 	design: '#e879f9',
@@ -62,6 +74,7 @@ const CATEGORY_ICONS = {
 	work: '💼',
 	social: '💬',
 	entertainment: '🎬',
+	movies: '🍿',
 	video: '📺',
 	gaming: '🎮',
 	music: '🎵',
@@ -78,6 +91,7 @@ const CATEGORY_ICONS = {
 	reference: '📖',
 	communication: '📞',
 	productivity: '📋',
+	mail: '✉️',
 	government: '🏛️',
 	utilities: '🔧',
 	design: '🎨',
@@ -99,6 +113,10 @@ const CATEGORY_ICONS = {
 };
 
 const CATEGORY_OPTIONS = Object.keys(CATEGORY_COLORS);
+const CATEGORY_LABELS = {
+	movies: 'Movie / Series',
+	mail: 'Email',
+};
 
 // DOM Elements - will be initialized after DOM loads
 let elements = {};
@@ -143,6 +161,10 @@ function getCategoryColor(category) {
 
 function getCategoryIcon(category) {
 	return CATEGORY_ICONS[category] || CATEGORY_ICONS.other;
+}
+
+function getCategoryLabel(category) {
+	return CATEGORY_LABELS[category] || category.charAt(0).toUpperCase() + category.slice(1);
 }
 
 function calcPercentage(value, total) {
@@ -226,6 +248,43 @@ async function setCustomCategoryRules(rules) {
 	});
 }
 
+async function deleteHistoryRange(startTime, endTime) {
+	return new Promise((resolve, reject) => {
+		chrome.runtime.sendMessage(
+			{
+				type: 'DELETE_HISTORY_RANGE',
+				startTime,
+				endTime,
+			},
+			(response) => {
+				if (chrome.runtime.lastError) {
+					reject(chrome.runtime.lastError);
+					return;
+				}
+				resolve(response);
+			}
+		);
+	});
+}
+
+async function deleteHistoryUrls(urls) {
+	return new Promise((resolve, reject) => {
+		chrome.runtime.sendMessage(
+			{
+				type: 'DELETE_HISTORY_URLS',
+				urls,
+			},
+			(response) => {
+				if (chrome.runtime.lastError) {
+					reject(chrome.runtime.lastError);
+					return;
+				}
+				resolve(response);
+			}
+		);
+	});
+}
+
 function downloadAsJson(data, filename = 'browsing-analytics.json') {
 	const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
 	const url = URL.createObjectURL(blob);
@@ -255,6 +314,9 @@ async function init() {
 		btnExport: document.getElementById('btn-export'),
 		btnRefresh: document.getElementById('btn-refresh'),
 		loadingOverlay: document.getElementById('loading-overlay'),
+		dashboardView: document.getElementById('dashboard-view'),
+		managementView: document.getElementById('management-view'),
+		tabButtons: Array.from(document.querySelectorAll('.tab-button')),
 		pagesTbody: document.getElementById('pages-tbody'),
 		pagination: document.getElementById('pagination'),
 		pageSearch: document.getElementById('page-search'),
@@ -271,6 +333,18 @@ async function init() {
 		customCategoryOptions: document.getElementById('custom-category-options'),
 		btnAddRule: document.getElementById('btn-add-rule'),
 		customRulesList: document.getElementById('custom-rules-list'),
+		btnDeleteToday: document.getElementById('btn-delete-today'),
+		btnDeleteDate: document.getElementById('btn-delete-date'),
+		deleteDateInput: document.getElementById('delete-date-input'),
+		deleteUrlInput: document.getElementById('delete-url-input'),
+		deleteUrlList: document.getElementById('delete-url-list'),
+		btnDeleteUrls: document.getElementById('btn-delete-urls'),
+		btnClearUrls: document.getElementById('btn-clear-urls'),
+		historySearchInput: document.getElementById('history-search-input'),
+		historyDropdown: document.getElementById('history-dropdown'),
+		historyList: document.getElementById('history-list'),
+		historyStatus: document.getElementById('history-status'),
+		managementStatus: document.getElementById('management-status'),
 		shareMenu: document.getElementById('share-menu'),
 		shareButton: document.getElementById('share-button'),
 		shareCopy: document.getElementById('share-copy'),
@@ -287,8 +361,11 @@ async function init() {
 		console.error('Failed to get history start date:', e);
 	}
 
+	setupDatePickers();
 	setupCustomSelect();
 	setupEventListeners();
+	setupViewTabs();
+	setupManagement();
 	setupTableResizers();
 	await initCustomCategories();
 	setupShareMenu();
@@ -365,12 +442,82 @@ function setupCustomSelect() {
 		}
 	});
 
+	document.addEventListener('keydown', (event) => {
+		if (event.key !== 'Escape') return;
+		elements.customSelect?.classList.remove('open');
+		elements.customCategorySelect?.classList.remove('open');
+	});
+}
+
+function setupDatePickers() {
+	if (!elements.dateStart || !elements.dateEnd) return;
+
 	const today = new Date();
 	const thirtyDaysAgo = new Date();
 	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-	if (elements.dateEnd) elements.dateEnd.valueAsDate = today;
-	if (elements.dateStart) elements.dateStart.valueAsDate = thirtyDaysAgo;
+	const minDate = historyStartDate ? new Date(historyStartDate) : null;
+	const maxDate = new Date();
+
+	if (window.flatpickr) {
+		const baseOptions = {
+			dateFormat: 'Y-m-d',
+			altInput: true,
+			altFormat: 'M j, Y',
+			altInputClass: 'date-input flatpickr-input',
+			allowInput: false,
+			disableMobile: true,
+			minDate,
+			maxDate,
+		};
+
+		dateStartPicker = flatpickr(elements.dateStart, {
+			...baseOptions,
+			defaultDate: thirtyDaysAgo,
+			onChange: (selectedDates) => {
+				if (!dateEndPicker) return;
+				const startDate = selectedDates[0];
+				if (!startDate) return;
+				dateEndPicker.set('minDate', startDate);
+				if (dateEndPicker.selectedDates[0] && dateEndPicker.selectedDates[0] < startDate) {
+					dateEndPicker.setDate(startDate, false);
+				}
+			},
+		});
+
+		dateEndPicker = flatpickr(elements.dateEnd, {
+			...baseOptions,
+			defaultDate: today,
+			onChange: (selectedDates) => {
+				if (!dateStartPicker) return;
+				const endDate = selectedDates[0];
+				if (!endDate) return;
+				dateStartPicker.set('maxDate', endDate);
+				if (dateStartPicker.selectedDates[0] && dateStartPicker.selectedDates[0] > endDate) {
+					dateStartPicker.setDate(endDate, false);
+				}
+			},
+		});
+
+		if (dateStartPicker && dateEndPicker) {
+			const startDate = dateStartPicker.selectedDates[0];
+			const endDate = dateEndPicker.selectedDates[0];
+			if (startDate) dateEndPicker.set('minDate', startDate);
+			if (endDate) dateStartPicker.set('maxDate', endDate);
+		}
+
+		return;
+	}
+
+	if (elements.dateEnd) elements.dateEnd.value = formatDateInput(today);
+	if (elements.dateStart) elements.dateStart.value = formatDateInput(thirtyDaysAgo);
+}
+
+function formatDateInput(date) {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, '0');
+	const day = String(date.getDate()).padStart(2, '0');
+	return `${year}-${month}-${day}`;
 }
 
 function setupEventListeners() {
@@ -392,6 +539,106 @@ function setupEventListeners() {
 			}, 300);
 		});
 	}
+}
+
+function setupViewTabs() {
+	if (!elements.tabButtons || elements.tabButtons.length === 0) return;
+
+	elements.tabButtons.forEach((button) => {
+		button.addEventListener('click', () => {
+			const view = button.dataset.view;
+			if (!view) return;
+			setActiveView(view, { updateUrl: true, persist: true });
+		});
+	});
+
+	const urlView = getViewFromUrl();
+	const initialView = urlView || 'dashboard';
+	setActiveView(initialView, { updateUrl: false, persist: false });
+}
+
+function getViewFromUrl() {
+	const params = new URLSearchParams(window.location.search);
+	const tab = params.get('tab');
+	if (tab === 'dashboard' || tab === 'management') return tab;
+	return null;
+}
+
+function setActiveView(view, options = {}) {
+	if (!elements.tabButtons) return;
+	const { updateUrl = true, persist = true } = options;
+
+	elements.tabButtons.forEach((button) => {
+		const isActive = button.dataset.view === view;
+		button.classList.toggle('active', isActive);
+		button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+	});
+
+	if (elements.dashboardView) {
+		elements.dashboardView.classList.toggle('hidden', view !== 'dashboard');
+	}
+	if (elements.managementView) {
+		elements.managementView.classList.toggle('hidden', view !== 'management');
+	}
+
+	if (updateUrl) {
+		const url = new URL(window.location.href);
+		url.searchParams.set('tab', view);
+		window.history.replaceState(null, '', url.toString());
+	}
+
+	if (persist) {
+		localStorage.setItem(VIEW_STORAGE_KEY, view);
+	}
+}
+
+function setupManagement() {
+	if (elements.deleteDateInput && window.flatpickr) {
+		const minDate = historyStartDate ? new Date(historyStartDate) : null;
+		const maxDate = new Date();
+		managementDatePicker = flatpickr(elements.deleteDateInput, {
+			dateFormat: 'Y-m-d',
+			altInput: true,
+			altFormat: 'M j, Y',
+			altInputClass: 'date-input flatpickr-input',
+			allowInput: false,
+			disableMobile: true,
+			minDate,
+			maxDate,
+			defaultDate: maxDate,
+		});
+	} else if (elements.deleteDateInput && !elements.deleteDateInput.value) {
+		elements.deleteDateInput.value = formatDateInput(new Date());
+	}
+
+	elements.btnDeleteToday?.addEventListener('click', handleDeleteToday);
+	elements.btnDeleteDate?.addEventListener('click', handleDeleteDate);
+	elements.deleteUrlInput?.addEventListener('blur', addUrlsFromInput);
+	elements.deleteUrlInput?.addEventListener('input', updateDeleteUrlsButtonState);
+	elements.deleteUrlInput?.addEventListener('keydown', (event) => {
+		if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+			addUrlsFromInput();
+		}
+	});
+	elements.btnDeleteUrls?.addEventListener('click', handleDeleteUrls);
+	elements.btnClearUrls?.addEventListener('click', () => {
+		managementUrls = [];
+		renderManagementUrlList();
+		setManagementStatus('List cleared.', 'success');
+	});
+
+	elements.deleteUrlList?.addEventListener('click', (event) => {
+		const button = event.target.closest('button[data-index]');
+		if (!button) return;
+		const index = Number(button.dataset.index);
+		if (Number.isNaN(index)) return;
+		managementUrls = managementUrls.filter((_, itemIndex) => itemIndex !== index);
+		renderManagementUrlList();
+	});
+
+	setupHistoryPicker();
+	renderManagementUrlList();
+	updateDeleteUrlsButtonState();
 }
 
 function setupTableResizers() {
@@ -429,12 +676,355 @@ function setupTableResizers() {
 	});
 }
 
+function setupHistoryPicker() {
+	if (!elements.historySearchInput || !elements.historyDropdown || !elements.historyList || !elements.historyStatus) return;
+
+	const openDropdown = () => {
+		elements.historyDropdown.classList.remove('hidden');
+	};
+	const closeDropdown = () => {
+		elements.historyDropdown.classList.add('hidden');
+	};
+
+	let searchTimeout = null;
+
+	elements.historySearchInput.addEventListener('focus', () => {
+		openDropdown();
+		if (elements.historyList.innerHTML.trim() === '') {
+			resetHistoryPicker();
+			loadHistoryPickerPage();
+		}
+	});
+
+	elements.historySearchInput.addEventListener('input', (event) => {
+		clearTimeout(searchTimeout);
+		searchTimeout = setTimeout(() => {
+			historyPickerQuery = event.target.value.trim();
+			resetHistoryPicker();
+			loadHistoryPickerPage();
+		}, 300);
+	});
+
+	elements.historyList.addEventListener('scroll', () => {
+		if (!historyPickerHasMore || historyPickerLoading) return;
+		const nearBottom = elements.historyList.scrollTop + elements.historyList.clientHeight >= elements.historyList.scrollHeight - 20;
+		if (nearBottom) {
+			loadHistoryPickerPage();
+		}
+	});
+
+	elements.historyList.addEventListener('click', (event) => {
+		const item = event.target.closest('[data-url]');
+		if (!item) return;
+		const url = item.dataset.url;
+		if (!url) return;
+		managementUrls = Array.from(new Set([...managementUrls, url]));
+		renderManagementUrlList();
+		setManagementStatus('Added 1 URL from history.', 'success');
+		const isMultiSelect = event.altKey || event.metaKey;
+		if (!isMultiSelect) {
+			closeDropdown();
+		}
+	});
+
+	document.addEventListener('click', (event) => {
+		if (event.target.closest('.management-picker')) return;
+		closeDropdown();
+	});
+
+	document.addEventListener('keydown', (event) => {
+		if (event.key !== 'Escape') return;
+		closeDropdown();
+	});
+}
+
+function resetHistoryPicker() {
+	historyPickerEndTime = null;
+	historyPickerHasMore = true;
+	historyPickerUrlSet = new Set();
+	if (elements.historyList) elements.historyList.innerHTML = '';
+	if (elements.historyStatus) elements.historyStatus.textContent = 'Loading...';
+}
+
+function loadHistoryPickerPage() {
+	if (historyPickerLoading || !historyPickerHasMore) return;
+	historyPickerLoading = true;
+	if (elements.historyStatus) elements.historyStatus.textContent = 'Loading...';
+
+	const searchParams = {
+		text: historyPickerQuery,
+		startTime: 0,
+		endTime: historyPickerEndTime || Date.now(),
+		maxResults: 50,
+	};
+
+	chrome.history.search(searchParams, (items) => {
+		historyPickerLoading = false;
+		if (chrome.runtime.lastError) {
+			if (elements.historyStatus) elements.historyStatus.textContent = 'Failed to load history.';
+			return;
+		}
+
+		if (!items || items.length === 0) {
+			historyPickerHasMore = false;
+			if (elements.historyStatus) {
+				elements.historyStatus.textContent = historyPickerQuery ? 'No results.' : 'No more items.';
+			}
+			return;
+		}
+
+		const fragment = document.createDocumentFragment();
+		items.forEach((item) => {
+			if (!item.url || historyPickerUrlSet.has(item.url)) return;
+			historyPickerUrlSet.add(item.url);
+
+			const row = document.createElement('div');
+			row.className = 'management-dropdown-item';
+			row.dataset.url = item.url;
+
+			const title = document.createElement('div');
+			title.className = 'management-dropdown-title';
+			title.textContent = item.title || truncateUrl(item.url, 80);
+
+			const url = document.createElement('div');
+			url.className = 'management-dropdown-url';
+			url.textContent = item.url;
+
+			row.appendChild(title);
+			row.appendChild(url);
+			fragment.appendChild(row);
+		});
+
+		if (elements.historyList) elements.historyList.appendChild(fragment);
+
+		const lastItem = items[items.length - 1];
+		historyPickerEndTime = (lastItem?.lastVisitTime || Date.now()) - 1;
+		historyPickerHasMore = historyPickerEndTime > 0;
+
+		if (elements.historyStatus) {
+			elements.historyStatus.textContent = historyPickerHasMore ? 'Scroll to load more.' : 'No more items.';
+		}
+	});
+}
+
+function setManagementStatus(message, tone = '') {
+	if (!elements.managementStatus) return;
+	elements.managementStatus.textContent = message || '';
+	elements.managementStatus.classList.remove('success', 'error');
+	if (tone) {
+		elements.managementStatus.classList.add(tone);
+	}
+}
+
+function normalizeUrlInput(value) {
+	const trimmed = value.trim();
+	if (!trimmed) return null;
+	let candidate = trimmed;
+	if (!/^https?:\/\//i.test(candidate)) {
+		candidate = `https://${candidate}`;
+	}
+	try {
+		const url = new URL(candidate);
+		if (!['http:', 'https:'].includes(url.protocol)) return null;
+		return url.href;
+	} catch {
+		return null;
+	}
+}
+
+function renderManagementUrlList() {
+	if (!elements.deleteUrlList) return;
+
+	if (managementUrls.length === 0) {
+		elements.deleteUrlList.innerHTML = '<div class="management-empty">No URLs added yet.</div>';
+		updateDeleteUrlsButtonState();
+		return;
+	}
+
+	elements.deleteUrlList.innerHTML = managementUrls
+		.map(
+			(url, index) =>
+				`<div class="management-url-item"><span>${escapeHtml(url)}</span><button class="btn-ghost" type="button" data-index="${index}">Remove</button></div>`
+		)
+		.join('');
+
+	updateDeleteUrlsButtonState();
+}
+
+function addUrlsFromInput() {
+	if (!elements.deleteUrlInput) return;
+	const rawValue = elements.deleteUrlInput.value;
+	const candidates = rawValue.split(/[\n,]+/).map((item) => item.trim()).filter(Boolean);
+
+	if (candidates.length === 0) {
+		updateDeleteUrlsButtonState();
+		return;
+	}
+
+	const validUrls = [];
+	const invalidUrls = [];
+
+	candidates.forEach((entry) => {
+		const normalized = normalizeUrlInput(entry);
+		if (!normalized) {
+			invalidUrls.push(entry);
+			return;
+		}
+		validUrls.push(normalized);
+	});
+
+	if (validUrls.length === 0) {
+		setManagementStatus('No valid URLs found.', 'error');
+		updateDeleteUrlsButtonState();
+		return;
+	}
+
+	const uniqueUrls = new Set(managementUrls);
+	validUrls.forEach((url) => uniqueUrls.add(url));
+	managementUrls = Array.from(uniqueUrls);
+	elements.deleteUrlInput.value = '';
+	renderManagementUrlList();
+
+	if (invalidUrls.length > 0) {
+		setManagementStatus(`Added ${validUrls.length} URL(s). ${invalidUrls.length} invalid.`, 'error');
+	} else {
+		setManagementStatus(`Added ${validUrls.length} URL(s).`, 'success');
+	}
+
+	updateDeleteUrlsButtonState();
+}
+
+function getValidUrlCountFromInput() {
+	if (!elements.deleteUrlInput) return 0;
+	const rawValue = elements.deleteUrlInput.value;
+	const candidates = rawValue.split(/[\n,]+/).map((item) => item.trim()).filter(Boolean);
+	let validCount = 0;
+	for (const entry of candidates) {
+		if (normalizeUrlInput(entry)) validCount += 1;
+	}
+	return validCount;
+}
+
+function updateDeleteUrlsButtonState() {
+	if (!elements.btnDeleteUrls) return;
+	const hasListItems = managementUrls.length > 0;
+	const hasValidInput = getValidUrlCountFromInput() > 0;
+	elements.btnDeleteUrls.disabled = !(hasListItems || hasValidInput);
+}
+
+function getDateRangeFromInput(dateValue) {
+	if (!dateValue) return null;
+	const parts = dateValue.split('-').map(Number);
+	if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) return null;
+	const [year, month, day] = parts;
+	const start = new Date(year, month - 1, day, 0, 0, 0, 0);
+	const end = new Date(year, month - 1, day, 23, 59, 59, 999);
+	return { start: start.getTime(), end: end.getTime() };
+}
+
+async function refreshHistoryInfo() {
+	try {
+		const historyInfo = await getHistoryStartDate();
+		historyStartDate = historyInfo.startDate;
+		historyDaysAvailable = historyInfo.daysAvailable;
+		filterTimeRangeOptions();
+
+		const selectedOption = elements.selectOptions?.querySelector('.custom-select-option.selected');
+		if (selectedOption?.dataset.value === 'all') {
+			if (elements.selectValue) elements.selectValue.textContent = `Since ${formatHistoryStartDate()}`;
+		}
+	} catch (error) {
+		console.error('Failed to refresh history start date:', error);
+	}
+}
+
+async function handleDeleteToday() {
+	if (!confirm('Delete all browsing history for today?')) return;
+
+	const start = new Date();
+	start.setHours(0, 0, 0, 0);
+	const end = Date.now();
+
+	try {
+		if (elements.btnDeleteToday) elements.btnDeleteToday.disabled = true;
+		const response = await deleteHistoryRange(start.getTime(), end);
+		if (!response?.success) {
+			throw new Error(response?.error || 'Failed to delete history.');
+		}
+		setManagementStatus('Deleted today\'s history.', 'success');
+		await refreshHistoryInfo();
+		await loadAnalytics();
+	} catch (error) {
+		console.error('Delete today failed:', error);
+		setManagementStatus('Failed to delete today\'s history.', 'error');
+	} finally {
+		if (elements.btnDeleteToday) elements.btnDeleteToday.disabled = false;
+	}
+}
+
+async function handleDeleteDate() {
+	if (!elements.deleteDateInput) return;
+	const range = getDateRangeFromInput(elements.deleteDateInput.value);
+	if (!range) {
+		setManagementStatus('Select a valid date first.', 'error');
+		return;
+	}
+
+	const readable = new Date(range.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+	if (!confirm(`Delete all browsing history for ${readable}?`)) return;
+
+	try {
+		if (elements.btnDeleteDate) elements.btnDeleteDate.disabled = true;
+		const response = await deleteHistoryRange(range.start, range.end);
+		if (!response?.success) {
+			throw new Error(response?.error || 'Failed to delete history.');
+		}
+		setManagementStatus(`Deleted history for ${readable}.`, 'success');
+		await refreshHistoryInfo();
+		await loadAnalytics();
+	} catch (error) {
+		console.error('Delete date failed:', error);
+		setManagementStatus('Failed to delete history for that date.', 'error');
+	} finally {
+		if (elements.btnDeleteDate) elements.btnDeleteDate.disabled = false;
+	}
+}
+
+async function handleDeleteUrls() {
+	if (!elements.btnDeleteUrls) return;
+	addUrlsFromInput();
+	if (managementUrls.length === 0) {
+		setManagementStatus('No URLs in the list.', 'error');
+		return;
+	}
+
+	if (!confirm(`Delete history for ${managementUrls.length} URL(s)?`)) return;
+
+	try {
+		elements.btnDeleteUrls.disabled = true;
+		const response = await deleteHistoryUrls(managementUrls);
+		if (!response?.success) {
+			throw new Error(response?.error || 'Failed to delete URLs.');
+		}
+		managementUrls = [];
+		renderManagementUrlList();
+		setManagementStatus('Deleted history for selected URLs.', 'success');
+		await refreshHistoryInfo();
+		await loadAnalytics();
+	} catch (error) {
+		console.error('Delete URLs failed:', error);
+		setManagementStatus('Failed to delete some URLs.', 'error');
+	} finally {
+		elements.btnDeleteUrls.disabled = managementUrls.length === 0;
+	}
+}
+
 async function initCustomCategories() {
 	if (!elements.customCategorySelect || !elements.customPattern || !elements.customRulesList) return;
 
 	if (elements.customCategoryOptions) {
 		elements.customCategoryOptions.innerHTML = CATEGORY_OPTIONS.map((category, index) => {
-			const label = `${getCategoryIcon(category)} ${category.charAt(0).toUpperCase() + category.slice(1)}`;
+			const label = `${getCategoryIcon(category)} ${getCategoryLabel(category)}`;
 			const selectedClass = index === 0 ? 'selected' : '';
 			return `<div class="custom-select-option ${selectedClass}" data-value="${category}">${label}</div>`;
 		}).join('');
@@ -442,9 +1032,7 @@ async function initCustomCategories() {
 
 	selectedCustomCategory = CATEGORY_OPTIONS[0] || 'other';
 	if (elements.customCategoryValue) {
-		elements.customCategoryValue.textContent = `${getCategoryIcon(selectedCustomCategory)} ${
-			selectedCustomCategory.charAt(0).toUpperCase() + selectedCustomCategory.slice(1)
-		}`;
+		elements.customCategoryValue.textContent = `${getCategoryIcon(selectedCustomCategory)} ${getCategoryLabel(selectedCustomCategory)}`;
 	}
 
 	try {
@@ -618,7 +1206,7 @@ function renderCustomCategories() {
 			(rule) => `
 				<div class="custom-category-item">
 					<div class="rule-text">${escapeHtml(rule.pattern)}</div>
-					<div class="rule-meta">${getCategoryIcon(rule.category)} ${escapeHtml(rule.category)}</div>
+					<div class="rule-meta">${getCategoryIcon(rule.category)} ${escapeHtml(getCategoryLabel(rule.category))}</div>
 					<button class="rule-remove" data-id="${rule.id}">Remove</button>
 				</div>
 			`
@@ -915,7 +1503,7 @@ function renderCategoriesChart() {
 	charts.categories = new Chart(ctx, {
 		type: 'doughnut',
 		data: {
-			labels: categories.map(([name]) => name.charAt(0).toUpperCase() + name.slice(1)),
+			labels: categories.map(([name]) => getCategoryLabel(name)),
 			datasets: [
 				{
 					data: categories.map(([_, value]) => value),
@@ -976,7 +1564,7 @@ function renderCategoryLegend() {
 			([name, value]) => `
 			<div class="legend-item">
 				<span class="legend-color" style="background: ${getCategoryColor(name)}"></span>
-				<span>${getCategoryIcon(name)} ${name.charAt(0).toUpperCase() + name.slice(1)}</span>
+				<span>${getCategoryIcon(name)} ${getCategoryLabel(name)}</span>
 				<span style="margin-left: 4px; opacity: 0.6">${calcPercentage(value, total)}</span>
 			</div>
 		`
