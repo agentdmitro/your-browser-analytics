@@ -5,55 +5,70 @@ A privacy-focused Chrome extension that analyzes your browsing history locally a
 ## Screenshots
 
 ### Popup
+
 ![Popup](public/popup.png)
 
 ### Dashboard Overview
+
 ![Dashboard Overview](public/dashboard-overview.png)
 
 ### Activity Chart
+
 ![Activity Chart](public/dashboard-chart.png)
+
+### Search Queries & Sessions
+
+![Search Queries & Sessions](public/dashboard-search-sessions.png)
+
+### History Management
+
+![History Management](public/dashboard-management.png) ![History Management 2](public/dashboard-management-2.png)
+
+### Custom Categories
+
+![Custom Categories](public/dashboard-custom-categories.png)
 
 ## Features
 
 - **100% Local Processing** - All data stays on your device. No servers, no tracking, no data collection.
-- **Smart Categorization** - Automatically categorizes websites into 35+ categories
+- **Smart Categorization** - 23 built-in categories with 536 rules
 - **Visual Analytics** - Interactive charts for hourly/daily activity patterns
 - **Date Range Filtering** - Analyze specific time periods
+- **History Management** - Delete visits for today, a specific date, or selected URLs (paste list or pick from history)
+- **Top Pages Table** - Search and paginate your most visited pages
+- **Custom Categories** - Add your own domain/regex rules for categorization
+- **Search Queries & Sessions** - Track top searches and session stats (count, average, longest)
 - **Export Data** - Export your analytics as JSON
 
 ## Categories
 
-| Category | Links | Examples |
-|----------|-------|----------|
-| Development | 100+ | localhost, GitHub, IDEs, dev tools... |
-| Work | 70+ | Slack, Notion, Jira, Google Workspace... |
-| Video | 40+ | YouTube, Netflix, streaming services... |
-| Gaming | 60+ | Steam, Twitch, game stores & news... |
-| Music | 50+ | Spotify, SoundCloud, lyrics sites... |
-| Social | 70+ | Facebook, Twitter, Reddit, Discord... |
-| News | 80+ | CNN, BBC, tech news... |
-| Finance | 60+ | Banks, crypto, trading platforms... |
-| Shopping | 40+ | Amazon, eBay, e-commerce... |
-| Education | 50+ | Wikipedia, Coursera, coding platforms... |
-| AI | 40+ | ChatGPT, Claude, Midjourney... |
-| Sports | 30+ | ESPN, live scores, sports leagues... |
-| Jobs | 30+ | Indeed, LinkedIn Jobs, remote jobs... |
-| Real Estate | 20+ | Zillow, property listings... |
-| Travel | 40+ | Booking, Airbnb, maps, airlines... |
-| Food | 30+ | Delivery apps, recipes... |
-| Health | 30+ | Medical info, fitness apps... |
-| Dating | 20+ | Tinder, Bumble, dating apps... |
-| Weather | 10+ | Weather forecasts... |
-| Automotive | 20+ | Car sales, auto news... |
-| Podcast | 20+ | Podcast platforms... |
-| Design | 40+ | Dribbble, Figma, design resources... |
-| Hosting | 30+ | Domain registrars, web hosting... |
-| Security | 30+ | VPNs, password managers, antivirus... |
-| 3D Modeling | 20+ | Blender, Unity, 3D marketplaces... |
-| Forums | 20+ | Discussion boards, communities... |
-| Streaming Tools | 10+ | OBS, Streamlabs... |
-| Legal | 20+ | Legal resources, court databases... |
-| Government | 20+ | Government portals... |
+Built-in categories (custom rules can add more):
+
+| Category      | Rules | Examples                               |
+| ------------- | ----- | -------------------------------------- |
+| Development   | 69    | localhost, GitHub, GitLab, Docker      |
+| Work          | 60    | Slack, Notion, Jira, Google Docs       |
+| Social        | 54    | Facebook, X (Twitter), Reddit, Discord |
+| AI            | 28    | ChatGPT, Claude, Gemini, Hugging Face  |
+| Russia        | 9     | yandex.ru, mail.ru, rambler.ru         |
+| Design        | 7     | Figma, Canva, Dribbble, Adobe          |
+| Mail          | 18    | Gmail, Outlook, Office365              |
+| Entertainment | 26    | 9GAG, Imgur, Giphy, Rotten Tomatoes    |
+| Movies        | 13    | Netflix, Max, Megogo                   |
+| Video         | 14    | YouTube, Hulu, Prime Video, Disney+    |
+| News          | 40    | NYTimes, BBC, Reuters, Bloomberg       |
+| Finance       | 22    | PayPal, Wise, Chase, Stripe            |
+| Shopping      | 39    | Amazon, eBay, Etsy, Walmart            |
+| Education     | 22    | Coursera, edX, Khan Academy            |
+| Productivity  | 10    | Notion, Todoist, Trello, Airtable      |
+| Gaming        | 18    | Steam, Epic Games, Riot, EA            |
+| Health        | 12    | WebMD, NIH, Mayo Clinic                |
+| Travel        | 13    | Booking, Airbnb, Expedia               |
+| Music         | 10    | Spotify, SoundCloud, Apple Music       |
+| Sports        | 8     | ESPN, NFL, NBA                         |
+| Food          | 9     | Allrecipes, Uber Eats, DoorDash        |
+| Adult         | 14    | Pornhub, OnlyFans, Patreon             |
+| Security      | 21    | OWASP, MITRE, VirusTotal, Shodan       |
 
 ## Privacy
 

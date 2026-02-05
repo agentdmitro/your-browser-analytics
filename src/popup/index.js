@@ -49,7 +49,7 @@ async function init() {
 
 function setupEventListeners() {
 	elements.btnDashboard?.addEventListener('click', () => {
-		chrome.tabs.create({ url: chrome.runtime.getURL('src/dashboard/index.html') });
+		chrome.tabs.create({ url: chrome.runtime.getURL('src/dashboard/index.html?tab=dashboard') });
 		window.close();
 	});
 }

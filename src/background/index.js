@@ -7,7 +7,6 @@ importScripts('./categorization.js');
 
 // Cache duration in milliseconds (5 minutes)
 const CACHE_DURATION = 5 * 60 * 1000;
-const DEBUG_CATEGORY_LOG = true;
 const SESSION_GAP_MS = 30 * 60 * 1000;
 const ACTIVE_VISIT_GAP_MS = 10 * 60 * 1000;
 
@@ -265,7 +264,6 @@ async function fetchHistoryData(days = 30, startTimestamp = null, endTimestamp =
 
 		// Get detailed visit information for more accurate counting
 		const domainStats = {};
-		const domainCategories = new Map();
 		const hourlyActivity = new Array(24).fill(0);
 		const dailyActivity = new Array(7).fill(0);
 		const searchStats = { total: 0, engines: {}, queries: {} };
@@ -327,9 +325,6 @@ async function fetchHistoryData(days = 30, startTimestamp = null, endTimestamp =
 			// Category stats - NOW WITH URL PATH DETECTION
 			const category = categorize(domain, item.url);
 			categoryStats[category] = (categoryStats[category] || 0) + visitCount;
-			if (!domainCategories.has(domain)) {
-				domainCategories.set(domain, category);
-			}
 
 			// Process each individual visit for time-based stats
 			for (const visit of visits) {
@@ -363,24 +358,6 @@ async function fetchHistoryData(days = 30, startTimestamp = null, endTimestamp =
 			.map(([query, count]) => ({ query, count }))
 			.sort((a, b) => b.count - a.count)
 			.slice(0, 10);
-
-		if (DEBUG_CATEGORY_LOG && days === 1 && !startTimestamp && !endTimestamp) {
-			const topDomainsWithCategory = topDomains.map(({ domain, visits }) => ({
-				domain,
-				visits,
-				category: domainCategories.get(domain) || 'other',
-			}));
-			const suspiciousOther = Array.from(domainCategories.entries())
-				.filter(([domain, category]) => category === 'other' && /(olx|rozetka)/i.test(domain))
-				.map(([domain, category]) => ({ domain, category }));
-
-			console.log('[debug][categories] range', new Date(startTime).toISOString(), new Date(endTime).toISOString());
-			console.log('[debug][categories] categoryStats', categoryStats);
-			console.log('[debug][categories] topDomains', topDomainsWithCategory);
-			if (suspiciousOther.length > 0) {
-				console.log('[debug][categories] suspiciousOther', suspiciousOther);
-			}
-		}
 
 		const result = {
 			topDomains,
