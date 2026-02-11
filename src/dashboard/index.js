@@ -1047,15 +1047,8 @@ async function handleDeleteUrls() {
 async function initCustomCategories() {
 	if (!elements.customCategorySelect || !elements.customPattern || !elements.customRulesList) return;
 
-	if (elements.customCategoryOptions) {
-		elements.customCategoryOptions.innerHTML = CATEGORY_OPTIONS.map((category, index) => {
-			const label = `${getCategoryIcon(category)} ${getCategoryLabel(category)}`;
-			const selectedClass = index === 0 ? 'selected' : '';
-			return `<div class="custom-select-option ${selectedClass}" data-value="${category}">${label}</div>`;
-		}).join('');
-	}
-
 	selectedCustomCategory = CATEGORY_OPTIONS[0] || 'other';
+	renderCustomCategoryOptions('');
 	if (elements.customCategoryValue) {
 		elements.customCategoryValue.textContent = `${getCategoryIcon(selectedCustomCategory)} ${getCategoryLabel(selectedCustomCategory)}`;
 	}
@@ -1123,6 +1116,36 @@ async function initCustomCategories() {
 	renderCustomCategories();
 }
 
+function renderCustomCategoryOptions(searchTerm = '') {
+	if (!elements.customCategoryOptions) return;
+
+	const query = String(searchTerm || '').trim().toLowerCase();
+	const filteredOptions = CATEGORY_OPTIONS.filter((category) => {
+		const categoryLabel = getCategoryLabel(category).toLowerCase();
+		return !query || category.includes(query) || categoryLabel.includes(query);
+	});
+
+	const optionsMarkup =
+		filteredOptions.length > 0
+			? filteredOptions
+					.map((category) => {
+						const label = `${getCategoryIcon(category)} ${getCategoryLabel(category)}`;
+						const selectedClass = category === selectedCustomCategory ? 'selected' : '';
+						return `<div class="custom-select-option ${selectedClass}" data-value="${category}">${label}</div>`;
+					})
+					.join('')
+			: '<div class="custom-category-empty">No categories found</div>';
+
+	elements.customCategoryOptions.innerHTML = `
+		<div class="custom-category-search-wrap">
+			<input id="custom-category-search" type="text" class="custom-category-search" placeholder="Search category..." value="${escapeHtml(searchTerm)}">
+		</div>
+		<div class="custom-category-options-list">
+			${optionsMarkup}
+		</div>
+	`;
+}
+
 function setCustomCategoryStatus(message = '', kind = '') {
 	if (!elements.customCategoryStatus) return;
 	elements.customCategoryStatus.textContent = message;
@@ -1138,6 +1161,27 @@ function setupCustomCategorySelect() {
 	elements.customCategoryTrigger.addEventListener('click', (event) => {
 		event.stopPropagation();
 		elements.customCategorySelect?.classList.toggle('open');
+		if (!elements.customCategorySelect?.classList.contains('open')) return;
+		const searchInput = elements.customCategoryOptions.querySelector('#custom-category-search');
+		if (searchInput) {
+			setTimeout(() => {
+				searchInput.focus();
+				searchInput.select();
+			}, 0);
+		}
+	});
+
+	elements.customCategoryOptions.addEventListener('input', (event) => {
+		const target = event.target;
+		if (!(target instanceof HTMLInputElement) || target.id !== 'custom-category-search') return;
+
+		renderCustomCategoryOptions(target.value);
+		const nextInput = elements.customCategoryOptions.querySelector('#custom-category-search');
+		if (nextInput) {
+			nextInput.focus();
+			const caret = target.value.length;
+			nextInput.setSelectionRange(caret, caret);
+		}
 	});
 
 	elements.customCategoryOptions.addEventListener('click', (event) => {
@@ -1157,6 +1201,7 @@ function setupCustomCategorySelect() {
 		}
 
 		elements.customCategorySelect?.classList.remove('open');
+		renderCustomCategoryOptions('');
 	});
 }
 
