@@ -41,6 +41,7 @@ const CATEGORY_RULES = {
 		/firebase\.google/i,
 		/firebaseio\.com/i,
 		/planetscale\.com/i,
+		/dev\.azure\.com/i,
 		/neon\.tech/i,
 		/upstash\.com/i,
 		/mongodb\.com/i,
@@ -69,6 +70,10 @@ const CATEGORY_RULES = {
 		/deno\.land/i,
 		/chromewebstore\.google\.com/i,
 		/chrome\.google\.com\/webstore/i,
+		/developer\.chrome\.com/i,
+		/github\.io/i,
+		/githubusercontent\.com/i,
+		/(^|\.)ukraine\.ua$/i,
 		/pkg\.go\.dev/i,
 		/crates\.io/i,
 		/rubygems\.org/i,
@@ -80,10 +85,26 @@ const CATEGORY_RULES = {
 		/hex\.pm/i,
 		/hackage\.haskell/i,
 		/pkg\.julialang/i,
+		/editorjs\.io/i,
+		/uptimerobot\.com/i,
 		/(^|\.)adm\.tools$/i,
+		/hetrixtools\.com/i,
+		/(^|\.)web-check\.xyz$/i,
+		/(^|\.)whatismyipaddress\.com$/i,
+		/hostiq\.ua/i,
+		/(^|\.)hostpro\.ua$/i,
 		/bluehost\.com/i,
 		/cloudflare\.com/i,
 		/cloudflare-dns\.com/i,
+		/(^|\.)speedtest\.net$/i,
+		/(^|\.)speedtest\.net\.ua$/i,
+		/(^|\.)speedtest\.googlefiber\.net$/i,
+		/(^|\.)openspeedtest\.com$/i,
+		/(^|\.)testmy\.net$/i,
+		/(^|\.)nperf\.com$/i,
+		/(^|\.)fast\.com$/i,
+		/(^|\.)speed\.cloudflare\.com$/i,
+		/(^|\.)speedtest\./i,
 		/github\.com/i,
 		/gitlab\.com/i,
 	],
@@ -95,6 +116,9 @@ const CATEGORY_RULES = {
 		/toptal\.com/i,
 		/peopleperhour\.com/i,
 		/freelancer\.com/i,
+		/work\.ua/i,
+		/recruitee\.com/i,
+		/breezy\.hr/i,
 		/guru\.com/i,
 		/weworkremotely\.com/i,
 		/remoteok\.com/i,
@@ -125,6 +149,16 @@ const CATEGORY_RULES = {
 		/zoom\.us/i,
 		/meet\.google\.com/i,
 		/teams\.microsoft\.com/i,
+		/planner\.cloud\.microsoft/i,
+		/googletagmanager\.com/i,
+		/tagmanager\.google\.com/i,
+		/ads\.google\.com/i,
+		/googleadservices\.com/i,
+		/doubleclick\.net/i,
+		/business\.facebook\.com/i,
+		/graph\.facebook\.com/i,
+		/developers\.facebook\.com/i,
+		/meta\.fordevelopers/i,
 		/miro\.com/i,
 		/vercel\.com/i,
 		/netlify\.com/i,
@@ -188,6 +222,7 @@ const CATEGORY_RULES = {
 		/pin\.it/i,
 		/tumblr\.com/i,
 		/threads\.net/i,
+		/threads\.com/i,
 		/mastodon\./i,
 		/mstdn\./i,
 		/bsky\.app/i,
@@ -222,6 +257,7 @@ const CATEGORY_RULES = {
 	],
 	ai: [
 		/openai\.com/i,
+		/deepseek\.com/i,
 		/chatgpt\.com/i,
 		/anthropic\.com/i,
 		/claude\.ai/i,
@@ -410,6 +446,7 @@ const CATEGORY_RULES = {
 	],
 	design: [
 		/figma\.com/i,
+		/app\.iconsax\.io/i,
 		/canva\.com/i,
 		/behance\.net/i,
 		/dribbble\.com/i,
@@ -532,6 +569,13 @@ const CATEGORY_RULES = {
 	mail: [
 		/mail\.google\.com/i,
 		/gmail\.com/i,
+		/postmarkapp\.com/i,
+		/brevo\.com/i,
+		/sendinblue\.com/i,
+		/sendgrid\.com/i,
+		/mailgun\.com/i,
+		/sparkpost\.com/i,
+		/smtp2go\.com/i,
 		/outlook\.cloud\.microsoft/i,
 		/outlook\.office\.com/i,
 		/outlook\.live\.com/i,
@@ -713,6 +757,7 @@ const CATEGORY_RULES = {
 		/infoq\.com/i,
 		/sdtimes\.com/i,
 		/theregister\.com/i,
+		/dev\.ua/i,
 		/hackernoon\.com/i,
 		/dzone\.com/i,
 		/infoworld\.com/i,
@@ -745,6 +790,7 @@ const CATEGORY_RULES = {
 		/changelog\.com/i,
 		/daily\.dev/i,
 	],
+	hosting: [/hostiq\.com/i, /hostiq\.ua/i],
 	finance: [
 		/paypal\.com/i,
 		/stripe\.com/i,
@@ -1018,6 +1064,8 @@ const CATEGORY_RULES = {
 	education: [
 		/(^|\.)mentor\.sh$/i,
 		/(^|\.)translate\.google\.com$/i,
+		/sheerid\.com/i,
+		/(^|\.)gen\.tech$/i,
 		/coursera\.org/i,
 		/edx\.org/i,
 		/udacity\.com/i,
@@ -1194,15 +1242,25 @@ const CATEGORY_RULES = {
 		/steamcommunity\.com/i,
 		/store\.steampowered\.com/i,
 		/steampowered\.com/i,
+		/steamdeck\.com/i,
+		/store\.epicgames\.com/i,
 		/epicgames\.com/i,
 		/gog\.com/i,
 		/battle\.net/i,
+		/battlenet\.com/i,
 		/riotgames\.com/i,
 		/ea\.com/i,
+		/ea\.app/i,
+		/ubisoftconnect\.com/i,
 		/ubisoft\.com/i,
 		/playstation\.com/i,
+		/playstationnetwork\.com/i,
 		/xbox\.com/i,
+		/xboxlive\.com/i,
 		/nintendo\.com/i,
+		/rockstargames\.com/i,
+		/bethesda\.net/i,
+		/epic\.games/i,
 		/roblox\.com/i,
 		/minecraft\.net/i,
 		/twitch\.tv/i,
@@ -1682,6 +1740,27 @@ function categorize(domain, url = '') {
 	// Extension pages should be treated as development tooling.
 	if (typeof url === 'string' && url.startsWith('chrome-extension://')) {
 		return 'development';
+	}
+
+	// Chrome Web Store and devconsole are part of extension development workflows.
+	if (typeof url === 'string' && /chrome\.google\.com\/webstore/i.test(url)) {
+		return 'development';
+	}
+
+	const normalizedDomain = String(domain || '').toLowerCase();
+	const normalizedUrl = String(url || '').toLowerCase();
+
+	// GitHub Pages URLs like *.github.io/site are usually project/dev pages.
+	if (normalizedDomain.endsWith('.github.io') && /\/site(\/|$)/i.test(normalizedUrl)) {
+		return 'development';
+	}
+
+	// DOU is mostly news content, while vacancies/jobs pages are work-oriented.
+	if (normalizedDomain === 'dou.ua' || normalizedDomain.endsWith('.dou.ua')) {
+		if (/\/(vacancies|jobs)(\/|$)/i.test(normalizedUrl)) {
+			return 'work';
+		}
+		return 'news';
 	}
 
 	// First check domain-based rules
