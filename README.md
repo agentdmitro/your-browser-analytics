@@ -31,7 +31,7 @@ A privacy-focused Chrome extension that analyzes your browsing history locally a
 ## Features
 
 - **100% Local Processing** - All data stays on your device. No servers, no tracking, no data collection.
-- **Smart Categorization** - 23 built-in categories with 536 rules
+- **Smart Categorization** - 24 built-in categories with 1553 rules
 - **Visual Analytics** - Interactive charts for hourly/daily activity patterns
 - **Date Range Filtering** - Analyze specific time periods
 - **History Management** - Delete visits for today, a specific date, or selected URLs (paste list or pick from history)
@@ -42,33 +42,34 @@ A privacy-focused Chrome extension that analyzes your browsing history locally a
 
 ## Categories
 
-Built-in categories (custom rules can add more):
+Built-in categories (custom rules can add more). Total mapped categories: 24.
 
 | Category      | Rules | Examples                               |
 | ------------- | ----- | -------------------------------------- |
-| Development   | 69    | localhost, GitHub, GitLab, Docker      |
-| Work          | 60    | Slack, Notion, Jira, Google Docs       |
-| Social        | 54    | Facebook, X (Twitter), Reddit, Discord |
-| AI            | 28    | ChatGPT, Claude, Gemini, Hugging Face  |
-| Russia        | 9     | yandex.ru, mail.ru, rambler.ru         |
-| Design        | 7     | Figma, Canva, Dribbble, Adobe          |
-| Mail          | 18    | Gmail, Outlook, Office365              |
+| Development   | 98    | localhost, GitHub, GitLab, Docker      |
+| Work          | 88    | Slack, Notion, Jira, Google Docs       |
+| Social        | 55    | Facebook, X (Twitter), Reddit, Discord |
+| AI            | 113   | ChatGPT, Claude, Gemini, Hugging Face  |
+| Russia        | 72    | yandex.ru, mail.ru, rambler.ru         |
+| Design        | 120   | Figma, Canva, Dribbble, Adobe          |
+| Mail          | 25    | Gmail, Outlook, Office365              |
 | Entertainment | 26    | 9GAG, Imgur, Giphy, Rotten Tomatoes    |
 | Movies        | 13    | Netflix, Max, Megogo                   |
-| Video         | 14    | YouTube, Hulu, Prime Video, Disney+    |
-| News          | 40    | NYTimes, BBC, Reuters, Bloomberg       |
-| Finance       | 22    | PayPal, Wise, Chase, Stripe            |
-| Shopping      | 39    | Amazon, eBay, Etsy, Walmart            |
-| Education     | 22    | Coursera, edX, Khan Academy            |
-| Productivity  | 10    | Notion, Todoist, Trello, Airtable      |
-| Gaming        | 18    | Steam, Epic Games, Riot, EA            |
-| Health        | 12    | WebMD, NIH, Mayo Clinic                |
-| Travel        | 13    | Booking, Airbnb, Expedia               |
-| Music         | 10    | Spotify, SoundCloud, Apple Music       |
+| Video         | 32    | YouTube, Hulu, Prime Video, Disney+    |
+| News          | 118   | NYTimes, BBC, Reuters, Bloomberg       |
+| Hosting       | 2     | hostiq.com, hostiq.ua                  |
+| Finance       | 127   | PayPal, Wise, Chase, Stripe            |
+| Shopping      | 139   | Amazon, eBay, Etsy, Walmart            |
+| Education     | 136   | Coursera, edX, Khan Academy            |
+| Productivity  | 37    | Notion, Todoist, Trello, Airtable      |
+| Gaming        | 75    | Steam, Epic Games, Riot, EA            |
+| Health        | 27    | WebMD, NIH, Mayo Clinic                |
+| Travel        | 43    | Booking, Airbnb, Expedia               |
+| Music         | 56    | Spotify, SoundCloud, Apple Music       |
 | Sports        | 8     | ESPN, NFL, NBA                         |
-| Food          | 9     | Allrecipes, Uber Eats, DoorDash        |
+| Food          | 73    | Allrecipes, Uber Eats, DoorDash        |
 | Adult         | 14    | Pornhub, OnlyFans, Patreon             |
-| Security      | 21    | OWASP, MITRE, VirusTotal, Shodan       |
+| Security      | 56    | OWASP, MITRE, VirusTotal, Shodan       |
 
 ## Privacy
 
