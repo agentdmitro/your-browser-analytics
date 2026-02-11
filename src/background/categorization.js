@@ -10,6 +10,8 @@ const CUSTOM_CATEGORY_RULES_KEY = 'customCategoryRules';
 const CATEGORY_RULES = {
 	development: [
 		/^localhost/i,
+		/localhost/i,
+		/^chrome-extension:/i,
 		/^127\.0\.0\.1/i,
 		/^0\.0\.0\.0/i,
 		/^192\.168\./i,
@@ -76,6 +78,10 @@ const CATEGORY_RULES = {
 		/hex\.pm/i,
 		/hackage\.haskell/i,
 		/pkg\.julialang/i,
+		/(^|\.)adm\.tools$/i,
+		/bluehost\.com/i,
+		/cloudflare\.com/i,
+		/cloudflare-dns\.com/i,
 		/github\.com/i,
 		/gitlab\.com/i,
 	],
@@ -99,6 +105,9 @@ const CATEGORY_RULES = {
 		/drive\.google\.com/i,
 		/calendar\.google\.com/i,
 		/office\.com/i,
+		/(^|\.)statics\.teams\.cdn\.office\.net$/i,
+		/(^|\.)login\.microsoftonline\.com$/i,
+		/(^|\.)engage\.cloud\.microsoft$/i,
 		/linkedin\.com/i,
 		/zoom\.us/i,
 		/meet\.google\.com/i,
@@ -994,6 +1003,8 @@ const CATEGORY_RULES = {
 		/ocado\.com/i,
 	],
 	education: [
+		/(^|\.)mentor\.sh$/i,
+		/(^|\.)translate\.google\.com$/i,
 		/coursera\.org/i,
 		/edx\.org/i,
 		/udacity\.com/i,
@@ -1653,6 +1664,11 @@ function categorize(domain, url = '') {
 		if (ruleMatches(rule, domain, url)) {
 			return rule.category;
 		}
+	}
+
+	// Extension pages should be treated as development tooling.
+	if (typeof url === 'string' && url.startsWith('chrome-extension://')) {
+		return 'development';
 	}
 
 	// First check domain-based rules

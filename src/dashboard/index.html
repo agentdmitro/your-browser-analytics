@@ -208,6 +208,14 @@
                         <canvas id="chart-categories"></canvas>
                     </div>
                     <div class="category-legend" id="category-legend"></div>
+                    <div class="other-pages-controls">
+                        <button type="button" class="other-pages-link" id="other-pages-link">
+                            Show pages in Other (<span id="other-pages-count">0</span>)
+                        </button>
+                    </div>
+                    <div class="other-pages-panel hidden" id="other-pages-panel">
+                        <div class="other-pages-list" id="other-pages-list"></div>
+                    </div>
                 </section>
 
                 <!-- Search Queries -->
@@ -300,6 +308,7 @@
                         <div class="custom-category-help">
                             Use plain text or a regex wrapped in slashes, e.g. /.*\\.google\\.com/
                         </div>
+                        <div class="custom-category-status" id="custom-category-status" role="status"></div>
                         <div class="custom-category-list" id="custom-rules-list"></div>
                     </div>
                 </section>

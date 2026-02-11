@@ -275,13 +275,14 @@ async function fetchHistoryData(days = 30, startTimestamp = null, endTimestamp =
 			maxResults: 10000,
 		});
 
-		// Get detailed visit information for more accurate counting
-		const domainStats = {};
-		const hourlyActivity = new Array(24).fill(0);
-		const dailyActivity = new Array(7).fill(0);
-		const searchStats = { total: 0, engines: {}, queries: {} };
-		const visitTimes = [];
-		const visitTimesToday = [];
+			// Get detailed visit information for more accurate counting
+			const domainStats = {};
+			const hourlyActivity = new Array(24).fill(0);
+			const dailyActivity = new Array(7).fill(0);
+			const searchStats = { total: 0, engines: {}, queries: {} };
+			const visitTimes = [];
+			const visitTimesToday = [];
+			const otherPageStats = {};
 		// Initialize ALL categories from CATEGORY_RULES + 'other'
 		const categoryStats = {};
 		for (const category of Object.keys(CATEGORY_RULES)) {
@@ -338,6 +339,16 @@ async function fetchHistoryData(days = 30, startTimestamp = null, endTimestamp =
 			// Category stats - NOW WITH URL PATH DETECTION
 			const category = categorize(domain, item.url);
 			categoryStats[category] = (categoryStats[category] || 0) + visitCount;
+			if (category === 'other') {
+				if (!otherPageStats[item.url]) {
+					otherPageStats[item.url] = {
+						url: item.url,
+						title: item.title || item.url,
+						visits: 0,
+					};
+				}
+				otherPageStats[item.url].visits += visitCount;
+			}
 
 			// Process each individual visit for time-based stats
 			for (const visit of visits) {
@@ -367,52 +378,56 @@ async function fetchHistoryData(days = 30, startTimestamp = null, endTimestamp =
 			.sort((a, b) => b.visits - a.visits)
 			.slice(0, 50);
 
-		const topSearches = Object.entries(searchStats.queries)
-			.map(([query, count]) => ({ query, count }))
-			.sort((a, b) => b.count - a.count)
-			.slice(0, 10);
+			const topSearches = Object.entries(searchStats.queries)
+				.map(([query, count]) => ({ query, count }))
+				.sort((a, b) => b.count - a.count)
+				.slice(0, 10);
+			const otherPages = Object.values(otherPageStats)
+				.sort((a, b) => b.visits - a.visits)
+				.slice(0, 200);
 
-		const result = {
-			topDomains,
-			topPages,
-			hourlyActivity,
-			dailyActivity,
-			categoryStats,
-			searchStats: {
-				total: searchStats.total,
-				engines: searchStats.engines,
-				topSearches,
-			},
-			sessions,
-			todayVisits,
-			totalVisits,
-			totalItems: historyItems.length,
-			uniqueDomains: Object.keys(domainStats).length, // Add actual unique domains count
-			activeTimeTotal: (() => {
-				let total = activeTimeTotal;
-				if (activeSessionStart && canTrackActiveTime()) {
-					const elapsed = now - activeSessionStart;
-					if (elapsed > 0) total += elapsed;
-				}
-				return total;
-			})(),
-			activeTimeToday: (() => {
-				let today = activeTimeDate === todayKey ? activeTimeToday : 0;
-				if (activeSessionStart && canTrackActiveTime()) {
-					const elapsed = now - activeSessionStart;
-					if (elapsed > 0) today += elapsed;
-				}
-				return Math.max(today, activeTimeTodayFromVisits);
-			})(),
-			fetchedAt: now,
-			dateRange: {
-				start: startTime,
-				end: endTime,
-				days: days,
-			},
-		};
+			const result = {
+				topDomains,
+				topPages,
+				hourlyActivity,
+				dailyActivity,
+				categoryStats,
+				searchStats: {
+					total: searchStats.total,
+					engines: searchStats.engines,
+					topSearches,
+				},
+				otherPages,
+				sessions,
+				todayVisits,
+				totalVisits,
+				totalItems: historyItems.length,
+				uniqueDomains: Object.keys(domainStats).length, // Add actual unique domains count
+				activeTimeTotal: (() => {
+					let total = activeTimeTotal;
+					if (activeSessionStart && canTrackActiveTime()) {
+						const elapsed = now - activeSessionStart;
+						if (elapsed > 0) total += elapsed;
+					}
+					return total;
+				})(),
+				activeTimeToday: (() => {
+					let today = activeTimeDate === todayKey ? activeTimeToday : 0;
+					if (activeSessionStart && canTrackActiveTime()) {
+						const elapsed = now - activeSessionStart;
+						if (elapsed > 0) today += elapsed;
+					}
+					return Math.max(today, activeTimeTodayFromVisits);
+				})(),
+				fetchedAt: now,
+				dateRange: {
+					start: startTime,
+					end: endTime,
+					days: days,
+				},
+			};
 
-		// Update cache (only for non-custom ranges)
+			// Update cache (only for non-custom ranges)
 		if (!startTimestamp) {
 			cachedData = result;
 			cacheTimestamp = now;
@@ -643,51 +658,66 @@ chrome.runtime.onInstalled.addListener(() => {
 
 loadPersistentState();
 
-chrome.idle.setDetectionInterval(60);
+if (chrome?.idle?.setDetectionInterval) {
+	chrome.idle.setDetectionInterval(60);
+}
 
-chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
-	if (tabs && tabs[0]) {
-		activeTabId = tabs[0].id;
-		updateActiveDomain(tabs[0]);
-	}
-});
-
-chrome.tabs.onActivated.addListener((activeInfo) => {
-	activeTabId = activeInfo.tabId;
-	chrome.tabs.get(activeInfo.tabId, (tab) => {
-		updateActiveDomain(tab);
+if (chrome?.tabs?.query) {
+	chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+		if (tabs && tabs[0]) {
+			activeTabId = tabs[0].id;
+			updateActiveDomain(tabs[0]);
+		}
 	});
-});
+}
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-	if (tabId !== activeTabId) return;
-	if (changeInfo.url || changeInfo.status === 'complete') {
-		updateActiveDomain(tab);
-	}
-});
+if (chrome?.tabs?.onActivated) {
+	chrome.tabs.onActivated.addListener((activeInfo) => {
+		activeTabId = activeInfo.tabId;
+		if (!chrome?.tabs?.get) return;
+		chrome.tabs.get(activeInfo.tabId, (tab) => {
+			updateActiveDomain(tab);
+		});
+	});
+}
 
-chrome.tabs.onRemoved.addListener((tabId) => {
-	if (tabId === activeTabId) {
-		stopActiveSession();
-		activeTabId = null;
-		activeDomain = null;
-	}
-});
+if (chrome?.tabs?.onUpdated) {
+	chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+		if (tabId !== activeTabId) return;
+		if (changeInfo.url || changeInfo.status === 'complete') {
+			updateActiveDomain(tab);
+		}
+	});
+}
 
-chrome.windows.onFocusChanged.addListener((windowId) => {
-	isWindowFocused = windowId !== chrome.windows.WINDOW_ID_NONE;
-	if (!isWindowFocused) {
-		stopActiveSession();
-	} else {
-		startActiveSession();
-	}
-});
+if (chrome?.tabs?.onRemoved) {
+	chrome.tabs.onRemoved.addListener((tabId) => {
+		if (tabId === activeTabId) {
+			stopActiveSession();
+			activeTabId = null;
+			activeDomain = null;
+		}
+	});
+}
 
-chrome.idle.onStateChanged.addListener((state) => {
-	idleState = state;
-	if (state !== 'active') {
-		stopActiveSession();
-	} else {
-		startActiveSession();
-	}
-});
+if (chrome?.windows?.onFocusChanged) {
+	chrome.windows.onFocusChanged.addListener((windowId) => {
+		isWindowFocused = windowId !== chrome.windows.WINDOW_ID_NONE;
+		if (!isWindowFocused) {
+			stopActiveSession();
+		} else {
+			startActiveSession();
+		}
+	});
+}
+
+if (chrome?.idle?.onStateChanged) {
+	chrome.idle.onStateChanged.addListener((state) => {
+		idleState = state;
+		if (state !== 'active') {
+			stopActiveSession();
+		} else {
+			startActiveSession();
+		}
+	});
+}

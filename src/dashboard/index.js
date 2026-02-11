@@ -25,6 +25,7 @@
 	let dateStartPicker = null;
 	let dateEndPicker = null;
 	let managementDatePicker = null;
+	let isOtherPagesExpanded = false;
 
 const CATEGORY_COLORS = {
 	development: '#22c55e',
@@ -345,6 +346,7 @@ async function init() {
 		customCategoryOptions: document.getElementById('custom-category-options'),
 		btnAddRule: document.getElementById('btn-add-rule'),
 		customRulesList: document.getElementById('custom-rules-list'),
+		customCategoryStatus: document.getElementById('custom-category-status'),
 		btnDeleteToday: document.getElementById('btn-delete-today'),
 		btnDeleteDate: document.getElementById('btn-delete-date'),
 		deleteDateInput: document.getElementById('delete-date-input'),
@@ -361,6 +363,10 @@ async function init() {
 		shareButton: document.getElementById('share-button'),
 		shareCopy: document.getElementById('share-copy'),
 		shareSnapshot: document.getElementById('share-snapshot'),
+		otherPagesLink: document.getElementById('other-pages-link'),
+		otherPagesCount: document.getElementById('other-pages-count'),
+		otherPagesPanel: document.getElementById('other-pages-panel'),
+		otherPagesList: document.getElementById('other-pages-list'),
 	};
 
 	// Get history start date and filter options
@@ -542,6 +548,10 @@ function setupEventListeners() {
 			console.warn('Failed to clear cache before refresh:', error);
 		}
 		loadAnalytics();
+	});
+	elements.otherPagesLink?.addEventListener('click', () => {
+		isOtherPagesExpanded = !isOtherPagesExpanded;
+		renderOtherPagesPanel();
 	});
 
 	if (elements.pageSearch) {
@@ -1055,14 +1065,24 @@ async function initCustomCategories() {
 		customCategoryRules = response?.rules || [];
 	} catch (e) {
 		console.error('Failed to load custom categories:', e);
+		setCustomCategoryStatus('Failed to load custom rules.', 'error');
 	}
 
-	elements.btnAddRule?.addEventListener('click', () => {
+	elements.btnAddRule?.addEventListener('click', async () => {
 		const pattern = elements.customPattern.value.trim();
 		const category = selectedCustomCategory;
 
 		if (!pattern) {
 			alert('Please enter a domain or keyword');
+			return;
+		}
+
+		const patternKey = pattern.toLowerCase();
+		const duplicateExists = customCategoryRules.some(
+			(rule) => String(rule.pattern || '').trim().toLowerCase() === patternKey && rule.category === category
+		);
+		if (duplicateExists) {
+			setCustomCategoryStatus('This custom rule already exists.', 'error');
 			return;
 		}
 
@@ -1072,21 +1092,44 @@ async function initCustomCategories() {
 			category,
 		};
 
+		const previousRules = customCategoryRules;
 		customCategoryRules = [...customCategoryRules, rule];
 		elements.customPattern.value = '';
-		saveCustomCategories();
+		const saved = await saveCustomCategories();
+		if (!saved) {
+			customCategoryRules = previousRules;
+			renderCustomCategories();
+			return;
+		}
+		setCustomCategoryStatus('Custom rule saved.', 'success');
 	});
 
-	elements.customRulesList.addEventListener('click', (event) => {
+	elements.customRulesList.addEventListener('click', async (event) => {
 		const button = event.target.closest('.rule-remove');
 		if (!button) return;
 		const ruleId = button.dataset.id;
+		const previousRules = customCategoryRules;
 		customCategoryRules = customCategoryRules.filter((rule) => rule.id !== ruleId);
-		saveCustomCategories();
+		const saved = await saveCustomCategories();
+		if (!saved) {
+			customCategoryRules = previousRules;
+			renderCustomCategories();
+			return;
+		}
+		setCustomCategoryStatus('Custom rule removed.', 'success');
 	});
 
 	setupCustomCategorySelect();
 	renderCustomCategories();
+}
+
+function setCustomCategoryStatus(message = '', kind = '') {
+	if (!elements.customCategoryStatus) return;
+	elements.customCategoryStatus.textContent = message;
+	elements.customCategoryStatus.classList.remove('success', 'error');
+	if (kind) {
+		elements.customCategoryStatus.classList.add(kind);
+	}
 }
 
 function setupCustomCategorySelect() {
@@ -1209,8 +1252,11 @@ async function saveCustomCategories() {
 			console.warn('Failed to clear cache after saving custom categories:', error);
 		}
 		await loadAnalytics();
+		return true;
 	} catch (e) {
 		console.error('Failed to save custom categories:', e);
+		setCustomCategoryStatus(`Failed to save: ${e?.message || 'Unknown error'}`, 'error');
+		return false;
 	}
 }
 
@@ -1294,6 +1340,7 @@ async function loadAnalytics() {
 		renderCharts();
 		renderPagesTable();
 		renderCategoryLegend();
+		renderOtherPagesPanel();
 		renderSearchStats();
 		renderSessionsStats();
 	} catch (error) {
@@ -1589,6 +1636,46 @@ function renderCategoryLegend() {
 				<span style="margin-left: 4px; opacity: 0.6">${calcPercentage(value, total)}</span>
 			</div>
 		`
+		)
+		.join('');
+}
+
+function renderOtherPagesPanel() {
+	if (!elements.otherPagesLink || !elements.otherPagesCount || !elements.otherPagesPanel || !elements.otherPagesList) return;
+
+	const pages = Array.isArray(analyticsData?.otherPages) ? analyticsData.otherPages : [];
+	elements.otherPagesCount.textContent = formatNumber(pages.length);
+
+	if (pages.length === 0) {
+		isOtherPagesExpanded = false;
+		elements.otherPagesLink.disabled = true;
+		elements.otherPagesLink.textContent = 'Show pages in Other (0)';
+		elements.otherPagesPanel.classList.add('hidden');
+		elements.otherPagesList.innerHTML = '<div class="other-pages-empty">No pages in Other for selected period.</div>';
+		return;
+	}
+
+	elements.otherPagesLink.disabled = false;
+	elements.otherPagesLink.textContent = `${isOtherPagesExpanded ? 'Hide' : 'Show'} pages in Other (${pages.length})`;
+
+	if (!isOtherPagesExpanded) {
+		elements.otherPagesPanel.classList.add('hidden');
+		return;
+	}
+
+	elements.otherPagesPanel.classList.remove('hidden');
+	elements.otherPagesList.innerHTML = pages
+		.map(
+			(page, index) => `
+				<div class="other-pages-item">
+					<div class="other-pages-rank">${index + 1}</div>
+					<div class="other-pages-content">
+						<div class="other-pages-title" title="${escapeHtml(page.title || page.url)}">${escapeHtml(page.title || page.url)}</div>
+						<div class="other-pages-url" title="${escapeHtml(page.url)}">${escapeHtml(page.url)}</div>
+					</div>
+					<div class="other-pages-visits">${formatNumber(page.visits || 0)}</div>
+				</div>
+			`
 		)
 		.join('');
 }
