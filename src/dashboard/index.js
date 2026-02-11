@@ -248,6 +248,18 @@ async function setCustomCategoryRules(rules) {
 	});
 }
 
+async function clearAnalyticsCache() {
+	return new Promise((resolve, reject) => {
+		chrome.runtime.sendMessage({ type: 'CLEAR_CACHE' }, (response) => {
+			if (chrome.runtime.lastError) {
+				reject(chrome.runtime.lastError);
+				return;
+			}
+			resolve(response);
+		});
+	});
+}
+
 async function deleteHistoryRange(startTime, endTime) {
 	return new Promise((resolve, reject) => {
 		chrome.runtime.sendMessage(
@@ -523,10 +535,13 @@ function formatDateInput(date) {
 function setupEventListeners() {
 	elements.btnApplyRange?.addEventListener('click', handleApplyCustomRange);
 	elements.btnExport?.addEventListener('click', handleExport);
-	elements.btnRefresh?.addEventListener('click', () => {
-		chrome.runtime.sendMessage({ type: 'CLEAR_CACHE' }, () => {
-			loadAnalytics();
-		});
+	elements.btnRefresh?.addEventListener('click', async () => {
+		try {
+			await clearAnalyticsCache();
+		} catch (error) {
+			console.warn('Failed to clear cache before refresh:', error);
+		}
+		loadAnalytics();
 	});
 
 	if (elements.pageSearch) {
@@ -1183,11 +1198,17 @@ function downloadDataUrl(dataUrl, filename) {
 
 async function saveCustomCategories() {
 	try {
-		await setCustomCategoryRules(customCategoryRules);
 		renderCustomCategories();
-		chrome.runtime.sendMessage({ type: 'CLEAR_CACHE' }, () => {
-			loadAnalytics();
-		});
+		const response = await setCustomCategoryRules(customCategoryRules);
+		if (!response?.success) {
+			throw new Error(response?.error || 'Failed to save custom category rules.');
+		}
+		try {
+			await clearAnalyticsCache();
+		} catch (error) {
+			console.warn('Failed to clear cache after saving custom categories:', error);
+		}
+		await loadAnalytics();
 	} catch (e) {
 		console.error('Failed to save custom categories:', e);
 	}

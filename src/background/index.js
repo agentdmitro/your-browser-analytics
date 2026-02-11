@@ -79,10 +79,16 @@ function ensureActiveTimeDate() {
 	}
 }
 
+function getStorageLocal() {
+	return chrome?.storage?.local || null;
+}
+
 function scheduleActiveTimeSave() {
 	if (activeTimeSaveTimer) clearTimeout(activeTimeSaveTimer);
 	activeTimeSaveTimer = setTimeout(() => {
-		chrome.storage.local.set({
+		const storageLocal = getStorageLocal();
+		if (!storageLocal) return;
+		storageLocal.set({
 			[ACTIVE_TIME_STORAGE_KEY]: activeTimeByDomain,
 			[ACTIVE_TIME_TOTAL_KEY]: activeTimeTotal,
 			[ACTIVE_TIME_TODAY_KEY]: activeTimeToday,
@@ -209,7 +215,14 @@ function calculateActiveTimeFromVisits(visitTimes, gapMs) {
 
 
 function loadPersistentState() {
-	chrome.storage.local.get(
+	const storageLocal = getStorageLocal();
+	if (!storageLocal) {
+		console.warn('chrome.storage.local is unavailable. Persistent state is disabled.');
+		ensureActiveTimeDate();
+		return;
+	}
+
+	storageLocal.get(
 		[
 			ACTIVE_TIME_STORAGE_KEY,
 			ACTIVE_TIME_TOTAL_KEY,
@@ -527,7 +540,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 	if (message.type === 'SET_CUSTOM_CATEGORY_RULES') {
 		customCategoryRules = Array.isArray(message.rules) ? message.rules : [];
-		chrome.storage.local.set({ [CUSTOM_CATEGORY_RULES_KEY]: customCategoryRules }, () => {
+		const storageLocal = getStorageLocal();
+		if (!storageLocal) {
+			clearCachedAnalytics();
+			sendResponse({
+				success: true,
+				persisted: false,
+				warning: 'chrome.storage.local is unavailable',
+			});
+			return true;
+		}
+
+		storageLocal.set({ [CUSTOM_CATEGORY_RULES_KEY]: customCategoryRules }, () => {
+			if (chrome.runtime.lastError) {
+				sendResponse({
+					success: false,
+					error: chrome.runtime.lastError.message || 'Failed to persist custom category rules.',
+				});
+				return;
+			}
 			clearCachedAnalytics();
 			sendResponse({ success: true });
 		});
