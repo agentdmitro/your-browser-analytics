@@ -26,6 +26,8 @@
 	let dateEndPicker = null;
 	let managementDatePicker = null;
 	let isOtherPagesExpanded = false;
+	let isSearchExpanded = false;
+	let isSearchBlurred = true;
 
 const CATEGORY_COLORS = {
 	development: '#22c55e',
@@ -334,6 +336,9 @@ async function init() {
 		pagination: document.getElementById('pagination'),
 		pageSearch: document.getElementById('page-search'),
 		categoryLegend: document.getElementById('category-legend'),
+		searchCard: document.getElementById('search-queries-card'),
+		searchToggle: document.getElementById('search-toggle'),
+		searchBlurToggle: document.getElementById('search-blur-toggle'),
 		searchSummary: document.getElementById('search-summary'),
 		searchList: document.getElementById('search-list'),
 		sessionsCount: document.getElementById('sessions-count'),
@@ -371,6 +376,8 @@ async function init() {
 
 	// Get history start date and filter options
 	try {
+		updateSearchSection();
+		updateSearchBlur();
 		const historyInfo = await getHistoryStartDate();
 		historyStartDate = historyInfo.startDate;
 		historyDaysAvailable = historyInfo.daysAvailable;
@@ -538,6 +545,19 @@ function formatDateInput(date) {
 	return `${year}-${month}-${day}`;
 }
 
+function updateSearchSection() {
+	if (!elements.searchCard || !elements.searchToggle) return;
+	elements.searchCard.classList.toggle('search-expanded', isSearchExpanded);
+	elements.searchCard.classList.toggle('search-collapsed', !isSearchExpanded);
+	elements.searchToggle.setAttribute('aria-expanded', String(isSearchExpanded));
+}
+
+function updateSearchBlur() {
+	if (!elements.searchBlurToggle || !elements.searchList) return;
+	elements.searchBlurToggle.checked = isSearchBlurred;
+	elements.searchList.classList.toggle('search-blurred', isSearchBlurred);
+}
+
 function setupEventListeners() {
 	elements.btnApplyRange?.addEventListener('click', handleApplyCustomRange);
 	elements.btnExport?.addEventListener('click', handleExport);
@@ -552,6 +572,18 @@ function setupEventListeners() {
 	elements.otherPagesLink?.addEventListener('click', () => {
 		isOtherPagesExpanded = !isOtherPagesExpanded;
 		renderOtherPagesPanel();
+	});
+
+	elements.searchToggle?.addEventListener('click', () => {
+		isSearchExpanded = !isSearchExpanded;
+		updateSearchSection();
+	});
+
+	elements.searchBlurToggle?.addEventListener('change', (event) => {
+		const target = event.target;
+		if (!(target instanceof HTMLInputElement)) return;
+		isSearchBlurred = target.checked;
+		updateSearchBlur();
 	});
 
 	if (elements.pageSearch) {

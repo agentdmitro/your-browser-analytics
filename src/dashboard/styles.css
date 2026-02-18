@@ -568,6 +568,50 @@ body {
 	color: var(--text-primary);
 }
 
+.chart-toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid var(--border-color);
+	background: var(--bg-secondary);
+	color: var(--text-secondary);
+	border-radius: var(--radius-sm);
+	width: 30px;
+	height: 30px;
+	padding: 0;
+	line-height: 1;
+	cursor: pointer;
+	transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.chart-toggle:hover {
+	background: var(--bg-card);
+	color: var(--text-primary);
+}
+
+.chart-toggle:focus-visible {
+	outline: 2px solid var(--accent-color);
+	outline-offset: 2px;
+}
+
+.chart-toggle-icon {
+	display: inline-flex;
+	transition: transform 0.2s ease;
+	transform-origin: center;
+}
+
+.search-collapsed .chart-toggle-icon {
+	transform: rotateX(0deg);
+}
+
+.search-expanded .chart-toggle-icon {
+	transform: rotateX(180deg);
+}
+
+.search-collapsed .chart-body-search {
+	display: none;
+}
+
 .chart-body {
 	padding: 20px;
 	position: relative;
@@ -1252,6 +1296,70 @@ body {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
+}
+
+.search-controls {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.blur-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 12px;
+	color: var(--text-secondary);
+	cursor: pointer;
+	user-select: none;
+}
+
+.blur-toggle input {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.blur-toggle-box {
+	width: 28px;
+	height: 18px;
+	border-radius: 999px;
+	background: linear-gradient(135deg, rgba(148, 163, 184, 0.3), rgba(148, 163, 184, 0.1));
+	border: 1px solid var(--border-color);
+	position: relative;
+	transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.blur-toggle-box::after {
+	content: '';
+	position: absolute;
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	top: 2px;
+	left: 2px;
+	background: #0f172a;
+	transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.blur-toggle input:checked + .blur-toggle-box {
+	background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(59, 130, 246, 0.2));
+	border-color: rgba(99, 102, 241, 0.5);
+}
+
+.blur-toggle input:checked + .blur-toggle-box::after {
+	transform: translateX(10px);
+	background: #0f172a;
+}
+
+.blur-toggle input:focus-visible + .blur-toggle-box {
+	outline: 2px solid var(--accent-color);
+	outline-offset: 2px;
+}
+
+.search-blurred .search-query,
+.search-blurred .search-count {
+	filter: blur(6px);
 }
 
 .search-summary {

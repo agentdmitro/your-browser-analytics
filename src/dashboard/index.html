@@ -219,11 +219,25 @@
                 </section>
 
                 <!-- Search Queries -->
-                <section class="chart-card">
+                <section class="chart-card search-collapsed" id="search-queries-card">
                     <div class="chart-header">
                         <h2>Search Queries</h2>
+                        <button type="button" class="chart-toggle" id="search-toggle" aria-expanded="false" aria-controls="search-queries-body" aria-label="Toggle search queries">
+                            <span class="chart-toggle-icon" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" color="currentColor">
+                                    <path d="M18 9.00005C18 9.00005 13.5811 15 12 15C10.4188 15 6 9 6 9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path>
+                                </svg>
+                            </span>
+                        </button>
                     </div>
-                    <div class="chart-body chart-body-search">
+                    <div class="chart-body chart-body-search" id="search-queries-body">
+                        <div class="search-controls">
+                            <label class="blur-toggle">
+                                <input type="checkbox" id="search-blur-toggle" checked>
+                                <span class="blur-toggle-box" aria-hidden="true"></span>
+                                <span class="blur-toggle-text">Розмити запити (блюрить текст)</span>
+                            </label>
+                        </div>
                         <div class="search-summary" id="search-summary">--</div>
                         <div class="search-list" id="search-list"></div>
                     </div>
