@@ -350,6 +350,11 @@ async function init() {
 		customCategoryValue: document.getElementById('custom-category-value'),
 		customCategoryOptions: document.getElementById('custom-category-options'),
 		btnAddRule: document.getElementById('btn-add-rule'),
+		customCategoryCount: document.getElementById('custom-category-count'),
+		customExportBtn: document.getElementById('custom-export-btn'),
+		customImportBtn: document.getElementById('custom-import-btn'),
+		customImportInput: document.getElementById('custom-import-input'),
+		customCategoryDrop: document.getElementById('custom-category-drop'),
 		customRulesList: document.getElementById('custom-rules-list'),
 		customCategoryStatus: document.getElementById('custom-category-status'),
 		btnDeleteToday: document.getElementById('btn-delete-today'),
@@ -372,6 +377,7 @@ async function init() {
 		otherPagesCount: document.getElementById('other-pages-count'),
 		otherPagesPanel: document.getElementById('other-pages-panel'),
 		otherPagesList: document.getElementById('other-pages-list'),
+		toastContainer: document.getElementById('toast-container'),
 	};
 
 	// Get history start date and filter options
@@ -1093,6 +1099,47 @@ async function initCustomCategories() {
 		setCustomCategoryStatus('Failed to load custom rules.', 'error');
 	}
 
+	elements.customExportBtn?.addEventListener('click', exportCustomCategories);
+
+	elements.customImportBtn?.addEventListener('click', () => {
+		elements.customImportInput?.click();
+	});
+
+	elements.customImportInput?.addEventListener('change', (event) => {
+		const input = event.target;
+		if (!(input instanceof HTMLInputElement)) return;
+		const file = input.files && input.files[0];
+		importCustomCategoriesFromFile(file);
+		input.value = '';
+	});
+
+	if (elements.customCategoryDrop) {
+		const dropZone = elements.customCategoryDrop;
+		const stopDefaults = (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+		};
+
+		['dragenter', 'dragover'].forEach((name) => {
+			dropZone.addEventListener(name, (event) => {
+				stopDefaults(event);
+				dropZone.classList.add('drag-active');
+			});
+		});
+
+		['dragleave', 'drop'].forEach((name) => {
+			dropZone.addEventListener(name, (event) => {
+				stopDefaults(event);
+				dropZone.classList.remove('drag-active');
+			});
+		});
+
+		dropZone.addEventListener('drop', (event) => {
+			const file = event.dataTransfer?.files?.[0];
+			importCustomCategoriesFromFile(file);
+		});
+	}
+
 	elements.btnAddRule?.addEventListener('click', async () => {
 		const pattern = elements.customPattern.value.trim();
 		const category = selectedCustomCategory;
@@ -1127,6 +1174,12 @@ async function initCustomCategories() {
 			return;
 		}
 		setCustomCategoryStatus('Custom rule saved.', 'success');
+	});
+
+	elements.customPattern?.addEventListener('keydown', (event) => {
+		if (event.key !== 'Enter') return;
+		event.preventDefault();
+		elements.btnAddRule?.click();
 	});
 
 	elements.customRulesList.addEventListener('click', async (event) => {
@@ -1185,6 +1238,22 @@ function setCustomCategoryStatus(message = '', kind = '') {
 	if (kind) {
 		elements.customCategoryStatus.classList.add(kind);
 	}
+}
+
+function showToast(title, message, kind = '') {
+	if (!elements.toastContainer) return;
+	const toast = document.createElement('div');
+	toast.className = `toast${kind ? ` toast-${kind}` : ''}`;
+	toast.innerHTML = `
+		<div>
+			<div class="toast-title">${escapeHtml(title)}</div>
+			<div class="toast-message">${escapeHtml(message)}</div>
+		</div>
+	`;
+	elements.toastContainer.appendChild(toast);
+	setTimeout(() => {
+		toast.remove();
+	}, 3200);
 }
 
 function setupCustomCategorySelect() {
@@ -1340,6 +1409,10 @@ async function saveCustomCategories() {
 function renderCustomCategories() {
 	if (!elements.customRulesList) return;
 
+	if (elements.customCategoryCount) {
+		elements.customCategoryCount.textContent = String(customCategoryRules.length);
+	}
+
 	if (!customCategoryRules.length) {
 		elements.customRulesList.innerHTML = '<div class="custom-category-help">No custom rules yet.</div>';
 		return;
@@ -1356,6 +1429,101 @@ function renderCustomCategories() {
 			`
 		)
 		.join('');
+}
+
+function normalizeImportedRules(data) {
+	const rules = Array.isArray(data) ? data : Array.isArray(data?.rules) ? data.rules : null;
+	if (!rules) {
+		return { error: 'Invalid file format. Expected a JSON array or { rules: [] }.' };
+	}
+
+	const added = [];
+	let invalidCount = 0;
+	let duplicateCount = 0;
+
+	const existingKeys = new Set(
+		customCategoryRules.map((rule) => `${String(rule.pattern || '').trim().toLowerCase()}::${rule.category || ''}`)
+	);
+
+	for (const rawRule of rules) {
+		const pattern = String(rawRule?.pattern || '').trim();
+		if (!pattern) {
+			invalidCount += 1;
+			continue;
+		}
+		let category = String(rawRule?.category || 'other').trim().toLowerCase();
+		if (!CATEGORY_OPTIONS.includes(category)) {
+			category = 'other';
+		}
+		const key = `${pattern.toLowerCase()}::${category}`;
+		if (existingKeys.has(key)) {
+			duplicateCount += 1;
+			continue;
+		}
+		existingKeys.add(key);
+		added.push({
+			id: String(rawRule?.id || (crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`)),
+			pattern,
+			category,
+		});
+	}
+
+	return { added, invalidCount, duplicateCount };
+}
+
+async function importCustomCategoriesFromFile(file) {
+	if (!file) return;
+	try {
+		const text = await file.text();
+		const data = JSON.parse(text);
+		const result = normalizeImportedRules(data);
+		if (result.error) {
+			showToast('Import failed', result.error, 'error');
+			return;
+		}
+
+		if (!result.added.length) {
+			showToast('Nothing to import', 'No new rules were added.', 'error');
+			return;
+		}
+
+		const previousRules = customCategoryRules;
+		customCategoryRules = [...customCategoryRules, ...result.added];
+		const saved = await saveCustomCategories();
+		if (!saved) {
+			customCategoryRules = previousRules;
+			renderCustomCategories();
+			return;
+		}
+
+		const summary = [
+			`${result.added.length} added`,
+			result.duplicateCount ? `${result.duplicateCount} duplicates skipped` : '',
+			result.invalidCount ? `${result.invalidCount} invalid skipped` : '',
+		]
+			.filter(Boolean)
+			.join(' • ');
+
+		showToast('Import complete', summary || 'Custom rules imported.', 'success');
+	} catch (error) {
+		console.error('Import custom categories failed:', error);
+		showToast('Import failed', 'Unable to read that file.', 'error');
+	}
+}
+
+function exportCustomCategories() {
+	if (!customCategoryRules.length) {
+		showToast('Nothing to export', 'No custom rules to export.', 'error');
+		return;
+	}
+
+	const payload = {
+		version: 1,
+		exportedAt: new Date().toISOString(),
+		rules: customCategoryRules,
+	};
+	downloadAsJson(payload, 'custom-categories.json');
+	showToast('Export ready', 'Custom rules downloaded.', 'success');
 }
 
 function handleApplyCustomRange() {

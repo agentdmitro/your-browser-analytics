@@ -549,7 +549,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 	}
 
 	if (message.type === 'GET_CUSTOM_CATEGORY_RULES') {
-		sendResponse({ rules: customCategoryRules });
+		const storageLocal = getStorageLocal();
+		if (!storageLocal) {
+			sendResponse({ rules: customCategoryRules });
+			return true;
+		}
+
+		storageLocal.get([CUSTOM_CATEGORY_RULES_KEY], (data) => {
+			const storedRules = Array.isArray(data[CUSTOM_CATEGORY_RULES_KEY]) ? data[CUSTOM_CATEGORY_RULES_KEY] : [];
+			customCategoryRules = storedRules;
+			sendResponse({ rules: storedRules });
+		});
 		return true;
 	}
 

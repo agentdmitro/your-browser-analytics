@@ -218,52 +218,6 @@
                     </div>
                 </section>
 
-                <!-- Search Queries -->
-                <section class="chart-card search-collapsed" id="search-queries-card">
-                    <div class="chart-header">
-                        <h2>Search Queries</h2>
-                        <button type="button" class="chart-toggle" id="search-toggle" aria-expanded="false" aria-controls="search-queries-body" aria-label="Toggle search queries">
-                            <span class="chart-toggle-icon" aria-hidden="true">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" color="currentColor">
-                                    <path d="M18 9.00005C18 9.00005 13.5811 15 12 15C10.4188 15 6 9 6 9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path>
-                                </svg>
-                            </span>
-                        </button>
-                    </div>
-                    <div class="chart-body chart-body-search" id="search-queries-body">
-                        <div class="search-controls">
-                            <label class="blur-toggle">
-                                <input type="checkbox" id="search-blur-toggle" checked>
-                                <span class="blur-toggle-box" aria-hidden="true"></span>
-                                <span class="blur-toggle-text">Розмити запити (блюрить текст)</span>
-                            </label>
-                        </div>
-                        <div class="search-summary" id="search-summary">--</div>
-                        <div class="search-list" id="search-list"></div>
-                    </div>
-                </section>
-
-                <!-- Sessions -->
-                <section class="chart-card">
-                    <div class="chart-header">
-                        <h2>Sessions</h2>
-                    </div>
-                    <div class="chart-body chart-body-sessions">
-                        <div class="session-stat">
-                            <div class="session-label">Sessions</div>
-                            <div class="session-value" id="sessions-count">--</div>
-                        </div>
-                        <div class="session-stat">
-                            <div class="session-label">Avg Session</div>
-                            <div class="session-value" id="sessions-avg">--</div>
-                        </div>
-                        <div class="session-stat">
-                            <div class="session-label">Longest</div>
-                            <div class="session-value" id="sessions-longest">--</div>
-                        </div>
-                    </div>
-                </section>
-
                 <!-- Top Domains - Full Width -->
                 <section class="chart-card chart-wide">
                     <div class="chart-header">
@@ -305,7 +259,19 @@
                 <!-- Custom Categories -->
                 <section class="chart-card chart-wide" id="custom-categories-card">
                     <div class="chart-header">
-                        <h2>Custom Categories</h2>
+                        <div class="chart-title">
+                            <h2>Custom Categories</h2>
+                            <span class="custom-category-count" id="custom-category-count">0</span>
+                        </div>
+                        <div class="custom-category-actions">
+                            <button class="icon-button" id="custom-export-btn" type="button" aria-label="Export custom categories">
+                                <img src="../../public/icons/export.svg" alt="" aria-hidden="true">
+                            </button>
+                            <button class="icon-button" id="custom-import-btn" type="button" aria-label="Import custom categories">
+                                <img src="../../public/icons/import.svg" alt="" aria-hidden="true">
+                            </button>
+                            <input type="file" id="custom-import-input" accept="application/json" hidden>
+                        </div>
                     </div>
                     <div class="chart-body chart-body-custom">
                         <div class="custom-category-form">
@@ -319,11 +285,60 @@
                             </div>
                             <button class="btn-apply" id="btn-add-rule">Add</button>
                         </div>
+                        <div class="custom-category-drop" id="custom-category-drop">
+                            Drop a JSON file here to import custom rules
+                        </div>
                         <div class="custom-category-help">
                             Use plain text or a regex wrapped in slashes, e.g. /.*\\.google\\.com/
                         </div>
                         <div class="custom-category-status" id="custom-category-status" role="status"></div>
                         <div class="custom-category-list" id="custom-rules-list"></div>
+                    </div>
+                </section>
+
+                <!-- Search Queries -->
+                <section class="chart-card search-collapsed" id="search-queries-card">
+                    <div class="chart-header">
+                        <h2>Search Queries</h2>
+                        <button type="button" class="chart-toggle" id="search-toggle" aria-expanded="false" aria-controls="search-queries-body" aria-label="Toggle search queries">
+                            <span class="chart-toggle-icon" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" color="currentColor">
+                                    <path d="M18 9.00005C18 9.00005 13.5811 15 12 15C10.4188 15 6 9 6 9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path>
+                                </svg>
+                            </span>
+                        </button>
+                    </div>
+                    <div class="chart-body chart-body-search" id="search-queries-body">
+                        <div class="search-controls">
+                            <label class="blur-toggle">
+                                <input type="checkbox" id="search-blur-toggle" checked>
+                                <span class="blur-toggle-box" aria-hidden="true"></span>
+                                <span class="blur-toggle-text">Blur queries (hide text)</span>
+                            </label>
+                        </div>
+                        <div class="search-summary" id="search-summary">--</div>
+                        <div class="search-list" id="search-list"></div>
+                    </div>
+                </section>
+
+                <!-- Sessions -->
+                <section class="chart-card">
+                    <div class="chart-header">
+                        <h2>Sessions</h2>
+                    </div>
+                    <div class="chart-body chart-body-sessions">
+                        <div class="session-stat">
+                            <div class="session-label">Sessions</div>
+                            <div class="session-value" id="sessions-count">--</div>
+                        </div>
+                        <div class="session-stat">
+                            <div class="session-label">Avg Session</div>
+                            <div class="session-value" id="sessions-avg">--</div>
+                        </div>
+                        <div class="session-stat">
+                            <div class="session-label">Longest</div>
+                            <div class="session-value" id="sessions-longest">--</div>
+                        </div>
                     </div>
                 </section>
             </div>
@@ -381,6 +396,8 @@
             <p>Analyzing your browsing history...</p>
         </div> -->
     </div>
+
+    <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
     <footer class="dashboard-footer">
         <div class="style_share__hADne">
