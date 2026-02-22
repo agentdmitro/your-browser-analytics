@@ -2,6 +2,8 @@
 
 A privacy-focused Chrome extension that analyzes your browsing history locally and provides detailed insights into your web usage patterns.
 
+Extension url: https://chromewebstore.google.com/detail/your-browsing-analytics/pibgcdealhkpgaeeeckfjgmicgogljgi
+
 ## Screenshots
 
 ### Popup
